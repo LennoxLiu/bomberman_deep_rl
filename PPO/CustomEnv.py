@@ -112,7 +112,8 @@ class CustomEnv(gym.Env):
         observation["step"] = game_state["step"]
         field = game_state["field"]
         observation["field"] = [(x, y, value) for x in range(field.shape[0]) for y in range(field.shape[1]) for value in [field[x, y]]]
-        observation["bombs"] = 
+        observation["bombs"] = game_state["bombs"]
+        
 
     def render(self):
         if self.gui is not None:
