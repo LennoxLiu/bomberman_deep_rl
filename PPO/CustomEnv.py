@@ -45,6 +45,8 @@ class CustomEnv(gym.Env):
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
+        super().reset(seed=seed)
+        # start a new round
         return observation, info
 
     def render(self):
