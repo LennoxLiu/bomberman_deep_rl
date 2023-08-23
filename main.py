@@ -94,7 +94,7 @@ def world_controller(world, n_rounds, *,
     world.end()
 
 
-def main(argv = None):
+def my_main_parser(argv = None):
     parser = ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='command_name', required=True)
@@ -175,10 +175,12 @@ def main(argv = None):
         gui = GUI(world)
     else:
         gui = None
-    world_controller(world, args.n_rounds,
-                     gui=gui, every_step=every_step, turn_based=args.turn_based,
-                     make_video=args.make_video, update_interval=args.update_interval)
+
+    return world, args.n_rounds, gui, every_step, args.turn_based, args.make_video, args.update_interval
+    # world_controller(world, args.n_rounds,
+    #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
+    #                  make_video=args.make_video, update_interval=args.update_interval)
 
 
 if __name__ == '__main__':
-    main()
+    my_main_parser()
