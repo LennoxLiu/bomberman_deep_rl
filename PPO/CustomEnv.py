@@ -28,16 +28,16 @@ class CustomEnv(gym.Env):
         COIN_COUNT = 50
         self.observation_space = spaces.Dict( \
             {   "step": Discrete(s.MAX_STEPS), \ 
-                "field": MultiDiscrete([s.COLS, s.ROWS, 3]), \
-                "bombs": Dict({"position": MultiDiscrete([s.COLS, s.ROWS]), "countdown": Discrete(s.BOMB_TIMER + 1)}), \
-                "explosion_map": MultiDiscrete([s.COLS, s.ROWS, s.EXPLOSION_TIMER + 1]), \
-                "coins": MultiDiscrete([s.COLS, s.ROWS]), \
-                "self": Dict({  "score": Box(low=0, dtype=np.float64), \
+                "field": Box(low = -1, high = 1, shape = (s.COLS, s.ROWS), dtype = np.int8), \
+                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.int8), \
+                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.int8), \
+                "coins": Box(low = 0, high = 1, shape = (s.COLS, s.ROWS), dtype = np.int8), \
+                "self": Dict({  "score": Box(low=0, dtype=np.int16), \
                                 "bomb_possible": Discrete(2), \
                                 "position": MultiDiscrete([s.COLS, s.ROWS])
                             }), \
                 "others": Dict({    "id": Discrete(3),\
-                                    "status": Dict({    "score": Box(low=0, dtype=np.float64),\
+                                    "status": Dict({    "score": Box(low=0, dtype=np.int16),\
                                                         "bomb_possible": Discrete(2),\
                                                         "position": MultiDiscrete([s.COLS, s.ROWS])\
                                                     }) \
