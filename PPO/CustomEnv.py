@@ -15,7 +15,7 @@ class CustomEnv(gym.Env):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
-        # Example when using discrete actions:
+
         self.action_space = spaces.Discrete(6) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         # Do not pass "round" and "user_input"
@@ -34,14 +34,14 @@ class CustomEnv(gym.Env):
                                     "status": Dict({    "score": Box(low=0, dtype=np.float64),\
                                                         "bomb_possible": Discrete(2),\
                                                         "position": MultiDiscrete([s.COLS, s.ROWS])\
-                                                    })
-                                }
-                            )
-            } 
+                                                    }) \
+                                } \
+                            ) \
+            } \
             )
 
     def step(self, action):
-        
+
         return observation, reward, terminated, truncated, info
 
     def reset(self, seed=None, options=None):
