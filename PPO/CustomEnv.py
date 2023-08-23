@@ -26,7 +26,7 @@ class CustomEnv(gym.Env):
         
         # Do not pass "round" and "user_input"
         COIN_COUNT = 50
-        self.observation_space = spaces.Dict(
+        self.observation_space = spaces.Dict( \
             {   "step": Discrete(s.MAX_STEPS), \ 
                 "field": MultiDiscrete([s.COLS, s.ROWS, 3]), \
                 "bombs": Dict({"position": MultiDiscrete([s.COLS, s.ROWS]), "countdown": Discrete(s.BOMB_TIMER + 1)}), \
@@ -92,16 +92,27 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
         self.PPO_agent = None
+        self.opponent_names = []
         for a in self.agent:
             if a.name == "user_agent":
                 self.PPO_agent = a
-        
+            else:
+                self.opponent_names.append(a.name)
+        assert self.PPO_agent != None
+
         # Get first observation
-        state = self.world.get_state_for_agent(self.PPO_agent)
-        
+        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        observation = fromStateToObservation(game_state)
 
         assert self.observation_space.contains(observation)
         return observation, _
+
+    def fromStateToObservation(self, game_state):
+        observation = {}
+        observation["step"] = game_state["step"]
+        field = game_state["field"]
+        observation["field"] = [(x, y, value) for x in range(field.shape[0]) for y in range(field.shape[1]) for value in [field[x, y]]]
+        observation["bombs"] = 
 
     def render(self):
         if self.gui is not None:
