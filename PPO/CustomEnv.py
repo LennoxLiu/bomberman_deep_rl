@@ -24,27 +24,21 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        # Do not pass "round" and "user_input"
-        COIN_COUNT = 50
+        # Do not pass "round", opponent score
         self.observation_space = spaces.Dict( \
-            {   "step": Discrete(s.MAX_STEPS), \ 
-                "field": Box(low = -1, high = 1, shape = (s.COLS, s.ROWS), dtype = np.int8), \
+            {   
+                "step": Discrete(s.MAX_STEPS), \ 
+                "field": Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
+                # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
+                # 4: no bomb opponents, 5: has bomb opponents,
+                # 6: self
                 "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
                 "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
-                "coins": Box(low = 0, high = 1, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
                 "self": Dict({  "score": Box(low=0, dtype=np.uint16), \
                                 "bomb_possible": Discrete(2), \
-                                "position": MultiDiscrete([s.COLS, s.ROWS])
                             }), \
-                "others": Dict({    "id": Discrete(3),\
-                                    "status": Dict({    "score": Box(low=0, dtype=np.uint16),\
-                                                        "bomb_possible": Discrete(2),\
-                                                        "position": MultiDiscrete([s.COLS, s.ROWS])\
-                                                    }) \
-                                } \
-                            ) \
             } \
-            )
+        )
 
 
     def my_render(self, wait_until_due):
