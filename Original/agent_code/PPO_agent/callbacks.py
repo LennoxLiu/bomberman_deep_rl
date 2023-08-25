@@ -7,6 +7,7 @@ def setup(self):
 
 def act(self, game_state: dict):
     observation = fromStateToObservation(game_state)
+    print(observation)
     action, _states = self.model.predict(observation)
     print(ACTION_MAP[action])
     return ACTION_MAP[action]

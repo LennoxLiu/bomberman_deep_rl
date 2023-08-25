@@ -130,7 +130,7 @@ class CustomEnv(gym.Env):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     reward += 1
                 case e.WAITED:
-                    reward += 1
+                    reward += 0.5
                 case e.INVALID_ACTION:
                     reward -= 50
                 case e.BOMB_DROPPED:

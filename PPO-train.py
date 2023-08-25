@@ -12,13 +12,13 @@ vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent
                                             "--scenario","classic"]})
 
 # model = PPO("MlpPolicy", vec_env, verbose=1)
-model = PPO.load("./agent_code/PPO_agent/ppo_bomberman", vec_env)
+model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", vec_env)
 # model.learn(total_timesteps=400)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
     if turn % 10 == 0:
-        model.save("./agent_code/PPO_agent/ppo_bomberman")
-model.save("./agent_code/PPO_agent/ppo_bomberman")
+        model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
+model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
 
 # del model # remove to demonstrate saving and loading
 # model = PPO.load("./agent_code/PPO_agent/_bomberman")
