@@ -1,7 +1,11 @@
+from stable_baselines3 import PPO
+from CustomEnv import fromStateToObservation
+
 def setup(self):
-    pass
+    self.model = PPO.load("./agent_code/PPO_agent/_bomberman")
 
 
 def act(self, game_state: dict):
-    self.logger.info('Pick action according to pressed key')
-    return game_state['user_input']
+    observation = fromStateToObservation(game_state)
+    action, _states = self.model.predict(observation)
+    return action

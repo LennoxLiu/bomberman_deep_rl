@@ -14,6 +14,40 @@ from replay import ReplayWorld
 
 ACTION_MAP=['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
+def fromStateToObservation(game_state):
+        # 0: ston walls, 1: free tiles, 2: crates, 
+        observation = game_state["field"].astype(np.uint8) + 1
+        #3: coins,
+        for coin in game_state["coins"]:
+            observation[coin] = 3
+        # 4: no bomb opponents, 5: has bomb opponents,
+        for other in game_state["others"]:
+            if other[2] == False: # bombs_left == False
+                observation[other[3]] = 4
+            else:
+                observation[other[3]] = 5
+        # 6: no bomb self, 7: has bomb self
+        if game_state["self"][2] == False:
+            observation[game_state["self"][3]] = 6
+        else:
+            observation[game_state["self"][3]] = 7
+
+        # 8~8+s.EXPLOSION_TIMER: explosion map
+        explosion_map = game_state["explosion_map"].astype(np.uint8)
+        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
+        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 8
+        
+        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        for bomb in game_state["bombs"]:
+            observation[bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
+        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation)
+
+        observation = observation.reshape(-1)
+        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation)
+    
+        return observation
+
+
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
@@ -84,9 +118,9 @@ class CustomEnv(gym.Env):
         game_state = self.world.get_state_for_agent(self.PPO_agent)
         if game_state == None: # the agent is dead
             truncated = True
-            observation = self.fromStateToObservation(self.PPO_agent.last_game_state)
+            observation = fromStateToObservation(self.PPO_agent.last_game_state)
         else:
-            observation = self.fromStateToObservation(game_state)
+            observation = fromStateToObservation(game_state)
 
         # get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
@@ -94,15 +128,15 @@ class CustomEnv(gym.Env):
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 10
+                    reward += 1
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 10
+                    reward -= 50
                 case e.BOMB_DROPPED:
-                    reward += 5
+                    reward += 1
                 case e.BOMB_EXPLODED:
-                    reward += 5
+                    reward += 1
                 case e.CRATE_DESTROYED:
                     reward += 1
                 case e.COIN_FOUND:
@@ -139,45 +173,10 @@ class CustomEnv(gym.Env):
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
-        observation = self.fromStateToObservation(game_state)
+        observation = fromStateToObservation(game_state)
 
         return observation, {"info": "reset"}
-
-
-    def fromStateToObservation(self, game_state):
-        # 0: ston walls, 1: free tiles, 2: crates, 
-        observation = game_state["field"].astype(np.uint8) + 1
-        #3: coins,
-        for coin in game_state["coins"]:
-            observation[coin] = 3
-        # 4: no bomb opponents, 5: has bomb opponents,
-        for other in game_state["others"]:
-            if other[2] == False: # bombs_left == False
-                observation[other[3]] = 4
-            else:
-                observation[other[3]] = 5
-        # 6: no bomb self, 7: has bomb self
-        if game_state["self"][2] == False:
-            observation[game_state["self"][3]] = 6
-        else:
-            observation[game_state["self"][3]] = 7
-
-        # 8~8+s.EXPLOSION_TIMER: explosion map
-        explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 8
-        
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-        for bomb in game_state["bombs"]:
-            observation[bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
-        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation)
-
-        observation = observation.reshape(-1)
-        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation)
     
-        assert self.observation_space.contains(observation)
-        return observation
-
 
     def render(self):
         if self.gui is not None:
