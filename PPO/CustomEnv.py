@@ -17,7 +17,7 @@ class CustomEnv(gym.Env):
 
     metadata = {"render_modes": ["default"], "render_fps": 30}
 
-    def __init__(self, arg1, arg2,):
+    def __init__(self):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
@@ -96,18 +96,37 @@ class CustomEnv(gym.Env):
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
-        observation = fromStateToObservation(game_state)
+        observation = self.fromStateToObservation(game_state)
 
-        assert self.observation_space.contains(observation)
         return observation, _
 
     def fromStateToObservation(self, game_state):
         observation = {}
         observation["step"] = game_state["step"]
-        field = game_state["field"]
-        observation["field"] = [(x, y, value) for x in range(field.shape[0]) for y in range(field.shape[1]) for value in [field[x, y]]]
-        observation["bombs"] = game_state["bombs"]
         
+        # 0: ston walls, 1: free tiles, 2: crates, 
+        observation["field"] = game_state["field"].astype(np.uint8) + 1
+        #3: coins,
+        for coin in game_state["coins"]:
+            observation["field"][coin] = 3
+        # 4: no bomb opponents, 5: has bomb opponents,
+        for other in game_state["others"]:
+            if other[2] == False: # bombs_left == False
+                observation["field"][other[3]] = 4
+            else:
+                observation["field"][other[3]] = 5
+        # 6: self
+        observation["field"][game_state["self"][3]] = 6
+
+        # position and countdown of bombs
+        observation["bombs"] = game_state["bombs"].astype(np.uint8)
+
+        observation["explosion_map"] = game_state["explosion_map"].astype(np.uint8)
+        
+        observation["self"] = {"score": game_state["self"][1], "bomb_possible": game_state["self"][2]}
+
+        assert self.observation_space.contains(observation)
+        return observation
 
     def render(self):
         if self.gui is not None:
