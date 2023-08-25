@@ -30,13 +30,13 @@ class CustomEnv(gym.Env):
         self.observation_space = spaces.Dict( 
             {   
                 "step": Discrete(s.MAX_STEPS + 1), 
-                "field": Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
+                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8), 
                 # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self
-                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
-                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
-                "self_score": Box(low= -32768, high = 32767, shape = (1,), dtype = np.int16), 
+                # 7~7+s.EXPLOSION_TIMER: explosion map
+                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+                
                 "self_bomb_possible": Discrete(2), 
             } 
         )
@@ -103,17 +103,17 @@ class CustomEnv(gym.Env):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     reward += 5
                 case e.WAITED:
-                    reward -= 5
-                case e.INVALID_ACTION:
-                    reward -= 50
-                case e.BOMB_DROPPED:
-                    reward += 10
-                case e.BOMB_EXPLODED:
                     reward += 1
+                case e.INVALID_ACTION:
+                    reward -= 10
+                case e.BOMB_DROPPED:
+                    reward += 6
+                case e.BOMB_EXPLODED:
+                    reward += 5
                 case e.CRATE_DESTROYED:
-                    reward += 10
+                    reward += 5
                 case e.COIN_FOUND:
-                    reward += 20
+                    reward += 10
                 case e.COIN_COLLECTED:
                     reward += 100
                 case e.KILLED_OPPONENT:
@@ -169,22 +169,22 @@ class CustomEnv(gym.Env):
                 observation["field"][other[3]] = 5
         # 6: self
         observation["field"][game_state["self"][3]] = 6
-        assert Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
-
-        # position and countdown of bombs
-        bomb_field = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
-        for bomb in game_state["bombs"]:
-            bomb_field[bomb[0]] = bomb[1]
-        observation["bombs"] = bomb_field
-        assert Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["bombs"])
-
-        observation["explosion_map"] = game_state["explosion_map"].astype(np.uint8)
-        assert Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["explosion_map"])
-
-        observation["self_score"] = np.array([game_state["self"][1],], dtype = np.int16)
-        assert Box(low=-32768, high = 32767, shape = (1,), dtype = np.int16).contains(observation["self_score"])
+        assert Box(low = 0, high = 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
         
-        observation["self_bomb_possible"] = game_state["self"][2]
+        # 7~7+s.EXPLOSION_TIMER: explosion map
+        explosion_map = game_state["explosion_map"].astype(np.uint8)
+        # Replace elements in observation with corresponding elements+7 from explosion_map if explosion_map elements are non-zero
+        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
+        
+        # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        for bomb in game_state["bombs"]:
+            observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
+        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
+
+        observation["field"] = observation["field"].flatten()
+        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
+        
+        observation["self_bomb_possible"] = int(game_state["self"][2])
         assert Discrete(2).contains(observation["self_bomb_possible"])
 
         assert self.observation_space.contains(observation)
