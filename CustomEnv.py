@@ -133,8 +133,7 @@ class CustomEnv(gym.Env):
         if game_state == None: # the agent is dead
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            
-            return observation, -100, False, True, {"events" : self.PPO_agent.events}
+            game_state = self.PPO_agent.last_game_state
         else:
             observation = fromStateToObservation(game_state)
 
@@ -142,8 +141,7 @@ class CustomEnv(gym.Env):
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            return observation, 100, terminated, False, {"events" : self.PPO_agent.events}
-
+            
         a = math.log(5)/2#math.log(2)
         b = 5**2 #2**2
         # calculate non-explore punishment
@@ -170,7 +168,7 @@ class CustomEnv(gym.Env):
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 6
+                    reward -= 10
                 case e.BOMB_DROPPED:
                     reward += 3
                 case e.BOMB_EXPLODED:
@@ -178,16 +176,15 @@ class CustomEnv(gym.Env):
                 case e.CRATE_DESTROYED:
                     reward += 5
                 case e.COIN_FOUND:
-                    reward += 10
+                    reward += 50
                 case e.COIN_COLLECTED:
-                    reward += 100
+                    reward += 1000
                 case e.KILLED_OPPONENT:
-                    reward += 500
+                    reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 200
-                    print("KILLED_SELF")
-                case e.GOT_KILLED:
                     reward -= 100
+                case e.GOT_KILLED:
+                    reward -= 200
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
