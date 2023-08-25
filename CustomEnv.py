@@ -25,8 +25,6 @@ def fromStateToObservation(game_state):
                 observation["field"][other[3]] = 4
             else:
                 observation["field"][other[3]] = 5
-        # 6: self
-        observation["field"][game_state["self"][3]] = 6
 
         # 7~7+s.EXPLOSION_TIMER: explosion map
         explosion_map = game_state["explosion_map"].astype(np.uint8)
@@ -37,6 +35,9 @@ def fromStateToObservation(game_state):
         for bomb in game_state["bombs"]:
             observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
         assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
+
+        # 6: self (needs to be present at any time)
+        observation["field"][game_state["self"][3]] = 6
 
         observation["field"] = observation["field"].reshape(-1)
         assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
@@ -73,7 +74,7 @@ class CustomEnv(gym.Env):
                 "bomb_possible": spaces.Discrete(2)
             }
         )
-        
+
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
             turn_based, self.make_video, update_interval = \
@@ -126,7 +127,7 @@ class CustomEnv(gym.Env):
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
             
-            return observation, -500, False, True, {"events" : self.PPO_agent.events}
+            return observation, 0, False, True, {"events" : self.PPO_agent.events}
         else:
             observation = fromStateToObservation(game_state)
 
@@ -134,7 +135,7 @@ class CustomEnv(gym.Env):
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            return observation, 500, terminated, False, {"events" : self.PPO_agent.events}
+            return observation, 100, terminated, False, {"events" : self.PPO_agent.events}
 
         # get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
@@ -152,17 +153,17 @@ class CustomEnv(gym.Env):
                 case e.BOMB_EXPLODED:
                     reward += 5
                 case e.CRATE_DESTROYED:
-                    reward += 1
-                case e.COIN_FOUND:
                     reward += 5
+                case e.COIN_FOUND:
+                    reward += 10
                 case e.COIN_COLLECTED:
                     reward += 100
                 case e.KILLED_OPPONENT:
                     reward += 500
                 case e.KILLED_SELF:
-                    reward -= 100
+                    reward -= 10
                 case e.GOT_KILLED:
-                    reward -= 500
+                    reward -= 50
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
