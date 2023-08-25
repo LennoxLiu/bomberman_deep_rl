@@ -10,20 +10,19 @@ from tqdm import tqdm
 vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
                                         "coin_collector_agent","--scenario","loot-crate"]})
 
-# model = PPO("MultiInputPolicy", vec_env, verbose=1)
-model = PPO.load("./PPO/ppo_bomberman", vec_env)
-model.learn(total_timesteps=400)
-# for turn in tqdm(range(20000)):
-    # model.learn(total_timesteps=400)
-    # if turn % 10 == 0:
-    #     model.save("./PPO/ppo_bomberman")
-model.save("./PPO/ppo_bomberman")
+# model = PPO("MlpPolicy", vec_env, verbose=1)
+model = PPO.load("./agent_code/PPO_agent/ppo_bomberman", vec_env)
+# model.learn(total_timesteps=400)
+for turn in tqdm(range(20000)):
+    model.learn(total_timesteps=400)
+    if turn % 10 == 0:
+        model.save("./agent_code/PPO_agent/ppo_bomberman")
+model.save("./agent_code/PPO_agent/ppo_bomberman")
 
 # del model # remove to demonstrate saving and loading
-# model = PPO.load("./PPO/_bomberman")
+# model = PPO.load("./agent_code/PPO_agent/_bomberman")
 
-obs = vec_env.reset()
-while True:
-    action, _states = model.predict(obs)
-    obs, rewards, dones, info = vec_env.step(action)
-    vec_env.render()
+# obs, _ = vec_env.reset()
+# for _ in range(400):
+#     action, _states = model.predict(obs)
+#     obs, rewards, terminated, truncated, info = vec_env.step(action)
