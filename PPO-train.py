@@ -10,8 +10,8 @@ from tqdm import tqdm
 env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
                                             "--scenario","coin-heaven"]})
 
-# model = PPO("MlpPolicy", env, verbose=1)
-model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
+model = PPO("MultiInputPolicy", env, verbose=1)
+# model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
     if turn % 10 == 0:

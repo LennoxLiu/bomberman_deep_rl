@@ -13,36 +13,38 @@ from fallbacks import pygame, LOADED_PYGAME
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
+        observation = {}
         # 0: ston walls, 1: free tiles, 2: crates, 
-        observation = game_state["field"].astype(np.uint8) + 1
+        observation["field"] = game_state["field"].astype(np.uint8) + 1
         #3: coins,
         for coin in game_state["coins"]:
-            observation[coin] = 3
+            observation["field"][coin] = 3
         # 4: no bomb opponents, 5: has bomb opponents,
         for other in game_state["others"]:
             if other[2] == False: # bombs_left == False
-                observation[other[3]] = 4
+                observation["field"][other[3]] = 4
             else:
-                observation[other[3]] = 5
-        # 6: no bomb self, 7: has bomb self
-        if game_state["self"][2] == False:
-            observation[game_state["self"][3]] = 6
-        else:
-            observation[game_state["self"][3]] = 7
+                observation["field"][other[3]] = 5
+        # 6: self
+        observation["field"][game_state["self"][3]] = 6
 
-        # 8~8+s.EXPLOSION_TIMER: explosion map
+        # 7~7+s.EXPLOSION_TIMER: explosion map
         explosion_map = game_state["explosion_map"].astype(np.uint8)
         # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 8
+        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
         
         # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
         for bomb in game_state["bombs"]:
-            observation[bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
-        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation)
+            observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
+        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
 
-        observation = observation.reshape(-1)
-        assert Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation)
+        observation["field"] = observation["field"].reshape(-1)
+        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
     
+        observation["bomb_possible"] = int(game_state["self"][2])
+        
+        assert spaces.Dict({"field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
+
         return observation
 
 
@@ -59,12 +61,18 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         # Do not pass "round", opponent score
-        self.observation_space = spaces.Box(low = 0, high = 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8)
+        self.observation_space = spaces.Dict(
+            {
+                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),
                 # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: no bomb self, 7: has bomb self
-                # 8~8+s.EXPLOSION_TIMER: explosion map
-                # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+                # 6: self
+                # 7~7+s.EXPLOSION_TIMER: explosion map
+                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+            
+                "bomb_possible": spaces.Discrete(2)
+            }
+        )
         
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
