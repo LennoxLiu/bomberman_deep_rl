@@ -2,17 +2,15 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box, Dict, Discrete
+from gymnasium.spaces import Box
 import settings as s
 import events as e
 import agents
 
 import main
-from environment import BombeRLeWorld, GUI
 from fallbacks import pygame, LOADED_PYGAME
-from replay import ReplayWorld
 
-ACTION_MAP=['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
+ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         # 0: ston walls, 1: free tiles, 2: crates, 
@@ -119,8 +117,16 @@ class CustomEnv(gym.Env):
         if game_state == None: # the agent is dead
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
+            
+            return observation, -500, False, True, {"events" : self.PPO_agent.events}
         else:
             observation = fromStateToObservation(game_state)
+
+                # terminated or trunctated
+        if self.world.running == False:
+            if self.world.step == s.MAX_STEPS:
+                terminated = True
+            return observation, 500, terminated, False, {"events" : self.PPO_agent.events}
 
         # get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
@@ -128,11 +134,11 @@ class CustomEnv(gym.Env):
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 2
+                    reward += 5
                 case e.WAITED:
-                    reward += 0.5
+                    reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 50
+                    reward -= 5
                 case e.BOMB_DROPPED:
                     reward += 1
                 case e.BOMB_EXPLODED:
@@ -153,13 +159,6 @@ class CustomEnv(gym.Env):
                     reward -= 10
                 case e.SURVIVED_ROUND:
                     reward += 500
-
-        # terminated or trunctated
-        if self.world.running == False:
-            if self.world.step == s.MAX_STEPS:
-                terminated = True
-            else:
-                truncated = True
 
         # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}

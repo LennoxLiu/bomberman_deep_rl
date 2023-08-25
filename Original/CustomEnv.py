@@ -2,15 +2,13 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box, Dict, Discrete
+from gymnasium.spaces import Box
 import settings as s
 import events as e
 import agents
 
 import main
-from environment import BombeRLeWorld, GUI
 from fallbacks import pygame, LOADED_PYGAME
-from replay import ReplayWorld
 
 ACTION_MAP=['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 

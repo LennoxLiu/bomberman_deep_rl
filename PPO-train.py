@@ -7,13 +7,12 @@ from tqdm import tqdm
 
 # Parallel environments
 # vec_env = make_vec_env("CartPole-v1", n_envs=1, seed=42)
-vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
-                                        "coin_collector_agent","coin_collector_agent",\
-                                            "--scenario","classic"]})
+env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
+                                        "coin-collector",\
+                                            "--scenario","coin-heaven"]})
 
-# model = PPO("MlpPolicy", vec_env, verbose=1, use_sde = True)
-model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", vec_env)
-# model.learn(total_timesteps=400)
+# model = PPO("MlpPolicy", env, verbose=1)
+model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
     if turn % 10 == 0:
