@@ -101,19 +101,19 @@ class CustomEnv(gym.Env):
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
+                    reward += 10
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
                     reward -= 10
                 case e.BOMB_DROPPED:
-                    reward += 6
+                    reward += 5
                 case e.BOMB_EXPLODED:
                     reward += 5
                 case e.CRATE_DESTROYED:
-                    reward += 5
+                    reward += 1
                 case e.COIN_FOUND:
-                    reward += 10
+                    reward += 5
                 case e.COIN_COLLECTED:
                     reward += 100
                 case e.KILLED_OPPONENT:
@@ -135,7 +135,7 @@ class CustomEnv(gym.Env):
                 truncated = True
 
         # the reward in gym is the smaller the better
-        return observation, -reward, terminated, truncated, {"events" : self.PPO_agent.events}
+        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
     def reset(self, seed = None):

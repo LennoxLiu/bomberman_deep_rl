@@ -7,15 +7,16 @@ from tqdm import tqdm
 
 # Parallel environments
 # vec_env = make_vec_env("CartPole-v1", n_envs=1, seed=42)
-vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent"]})
+vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
+                                        "coin_collector_agent","--scenario","loot-crate"]})
 
 # model = PPO("MultiInputPolicy", vec_env, verbose=1)
 model = PPO.load("./PPO/ppo_bomberman", vec_env)
-# model.learn(total_timesteps=400)
-for turn in tqdm(range(100)):
-    model.learn(total_timesteps=400)
-    if turn % 10 == 0:
-        model.save("./PPO/ppo_bomberman")
+model.learn(total_timesteps=400)
+# for turn in tqdm(range(20000)):
+    # model.learn(total_timesteps=400)
+    # if turn % 10 == 0:
+    #     model.save("./PPO/ppo_bomberman")
 model.save("./PPO/ppo_bomberman")
 
 # del model # remove to demonstrate saving and loading
