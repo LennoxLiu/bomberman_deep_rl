@@ -5,6 +5,7 @@ from stable_baselines3.common.env_checker import check_env
 from gymnasium.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete
 import settings as s
 import events as e
+import agents
 
 import main
 from environment import BombeRLeWorld, GUI
@@ -16,7 +17,7 @@ ACTION_MAP=['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
-    metadata = {"render_modes": ["default"], "render_fps": 30}
+    # metadata = {"render_modes": ["default"], "render_fps": 30}
 
     def __init__(self):
         super().__init__()
@@ -35,9 +36,8 @@ class CustomEnv(gym.Env):
                 # 6: self
                 "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
                 "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
-                "self": Dict({  "score": Box(low=0, dtype=np.uint16), 
-                                "bomb_possible": Discrete(2), 
-                            }), 
+                "self_score": Box(low= -32768, high = 32767, shape = (1,), dtype = np.int16), 
+                "self_bomb_possible": Discrete(2), 
             } 
         )
 
@@ -57,15 +57,22 @@ class CustomEnv(gym.Env):
     def step(self, action):
         self.world.do_step(ACTION_MAP[action])
         self.user_input = None
-        
+
+        terminated = False
+        truncated = False
+
         # get observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
-        observation = self.fromStateToObservation(game_state)
+        if game_state == None: # the agent is dead
+            truncated = True
+            observation = self.fromStateToObservation(self.PPO_agent.last_game_state)
+        else:
+            observation = self.fromStateToObservation(game_state)
 
         # get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
         reward = 0
-        for event in self.events:
+        for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     reward += 5
@@ -95,15 +102,13 @@ class CustomEnv(gym.Env):
                     reward += 500
 
         # terminated or trunctated
-        terminated = False
-        truncated = False
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
             else:
                 truncated = True
 
-        return observation, reward, terminated, truncated, None
+        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
     def reset(self, seed=None, options=None):
@@ -113,7 +118,7 @@ class CustomEnv(gym.Env):
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
             turn_based, self.make_video, update_interval = \
-                main.my_main_parser(argv="play --my-agent PPO_agent")
+                main.my_main_parser(argv=["play","--no-gui","--my-agent","user_agent"])
 
         # world_controller(world, args.n_rounds,
         #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
@@ -124,29 +129,28 @@ class CustomEnv(gym.Env):
             self.gui.screenshot_dir.mkdir()
 
         self.gui_timekeeper = main.Timekeeper(update_interval)
-        self.user_input = None
+        self.world.user_input = None
 
         # one CustomEnv only run one round
         self.world.new_round()
 
         self.PPO_agent = None
-        self.opponent_names = []
-        for a in self.agent:
+        for a in self.world.agents:
             if a.name == "user_agent":
                 self.PPO_agent = a
-            else:
-                self.opponent_names.append(a.name)
-        assert self.PPO_agent != None
+        assert isinstance(self.PPO_agent, agents.Agent)
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
         observation = self.fromStateToObservation(game_state)
 
-        return observation, _
+        return observation, {"info": "reset"}
+
 
     def fromStateToObservation(self, game_state):
         observation = {}
         observation["step"] = game_state["step"]
+        assert Discrete(s.MAX_STEPS).contains(observation["step"])
         
         # 0: ston walls, 1: free tiles, 2: crates, 
         observation["field"] = game_state["field"].astype(np.uint8) + 1
@@ -161,16 +165,27 @@ class CustomEnv(gym.Env):
                 observation["field"][other[3]] = 5
         # 6: self
         observation["field"][game_state["self"][3]] = 6
+        assert Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
 
         # position and countdown of bombs
-        observation["bombs"] = game_state["bombs"].astype(np.uint8)
+        bomb_field = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
+        for bomb in game_state["bombs"]:
+            bomb_field[bomb[0]] = bomb[1]
+        observation["bombs"] = bomb_field
+        assert Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["bombs"])
 
         observation["explosion_map"] = game_state["explosion_map"].astype(np.uint8)
+        assert Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["explosion_map"])
+
+        observation["self_score"] = np.array([game_state["self"][1],], dtype = np.int16)
+        assert Box(low=-32768, high = 32767, shape = (1,), dtype = np.int16).contains(observation["self_score"])
         
-        observation["self"] = {"score": game_state["self"][1], "bomb_possible": game_state["self"][2]}
+        observation["self_bomb_possible"] = game_state["self"][2]
+        assert Discrete(2).contains(observation["self_bomb_possible"])
 
         assert self.observation_space.contains(observation)
         return observation
+
 
     def render(self):
         if self.gui is not None:
