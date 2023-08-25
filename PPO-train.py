@@ -9,10 +9,10 @@ from tqdm import tqdm
 # vec_env = make_vec_env("CartPole-v1", n_envs=1, seed=42)
 env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
                                             #"coin_collector_agent", \
-                                            "--scenario","loot-crate-3"]})
+                                            "--scenario","loot-crate-4"]})
 
-model = PPO("MultiInputPolicy", env, verbose=1)
-# model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
+# model = PPO("MultiInputPolicy", env, verbose=1)
+model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
     if turn % 10 == 0:

@@ -9,6 +9,7 @@ import agents
 
 import main
 from fallbacks import pygame, LOADED_PYGAME
+import math
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
@@ -25,8 +26,6 @@ def fromStateToObservation(game_state):
                 observation["field"][other[3]] = 4
             else:
                 observation["field"][other[3]] = 5
-        # 6: self
-        observation["field"][game_state["self"][3]] = 6
 
         # 7~7+s.EXPLOSION_TIMER: explosion map
         explosion_map = game_state["explosion_map"].astype(np.uint8)
@@ -37,6 +36,9 @@ def fromStateToObservation(game_state):
         for bomb in game_state["bombs"]:
             observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
         assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
+
+        # 6: self (needs to be present at any time)
+        observation["field"][game_state["self"][3]] = 6
 
         observation["field"] = observation["field"].reshape(-1)
         assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
@@ -57,6 +59,7 @@ class CustomEnv(gym.Env):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
+        self.trajectory = []
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
@@ -73,7 +76,7 @@ class CustomEnv(gym.Env):
                 "bomb_possible": spaces.Discrete(2)
             }
         )
-        
+
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
             turn_based, self.make_video, update_interval = \
@@ -112,6 +115,11 @@ class CustomEnv(gym.Env):
             self.gui.render()
             pygame.display.flip()
 
+    def manhattan_distance(self, point1, point2):
+        x1, y1 = point1
+        x2, y2 = point2
+        distance = abs(x2 - x1) + abs(y2 - y1)
+        return distance
 
     def step(self, action):
         self.world.do_step(ACTION_MAP[action])
@@ -126,7 +134,7 @@ class CustomEnv(gym.Env):
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
             
-            return observation, -500, False, True, {"events" : self.PPO_agent.events}
+            return observation, -100, False, True, {"events" : self.PPO_agent.events}
         else:
             observation = fromStateToObservation(game_state)
 
@@ -134,39 +142,58 @@ class CustomEnv(gym.Env):
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            return observation, 500, terminated, False, {"events" : self.PPO_agent.events}
+            return observation, 100, terminated, False, {"events" : self.PPO_agent.events}
+
+        a = math.log(5)/2#math.log(2)
+        b = 5**2 #2**2
+        # calculate non-explore punishment
+        non_explore_punishment = 0
+        current_pos = game_state["self"][3]
+        for i in range(len(self.trajectory)):
+            pos = self.trajectory[-i]
+            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+
+        # new visit reward
+        new_visit_reward = 0
+        if current_pos not in self.trajectory:
+            new_visit_reward = 10
+        
+        self.trajectory.append(current_pos)
 
         # get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = 0
+        reward = new_visit_reward - non_explore_punishment
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     reward += 5
+                    self.PPO_agent.logger.info("Move reward")
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 5
+                    reward -= 6
                 case e.BOMB_DROPPED:
-                    reward += 10
+                    reward += 3
                 case e.BOMB_EXPLODED:
-                    reward += 5
+                    reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 1
-                case e.COIN_FOUND:
                     reward += 5
+                case e.COIN_FOUND:
+                    reward += 10
                 case e.COIN_COLLECTED:
                     reward += 100
                 case e.KILLED_OPPONENT:
                     reward += 500
                 case e.KILLED_SELF:
-                    reward -= 100
+                    reward -= 200
+                    self.PPO_agent.logger.info("KILLED_SELF")
                 case e.GOT_KILLED:
-                    reward -= 500
+                    reward -= 100
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
                     reward += 500
+                    self.PPO_agent.logger.info("SURVIVED_ROUND")
 
         # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
@@ -175,6 +202,7 @@ class CustomEnv(gym.Env):
     def reset(self, seed = None):
         super().reset(seed=seed) # following documentation
         
+        self.trajectory = []
         # start a new round
         self.world.new_round()
 
