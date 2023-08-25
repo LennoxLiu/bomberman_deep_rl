@@ -19,7 +19,7 @@ class CustomEnv(gym.Env):
 
     # metadata = {"render_modes": ["default"], "render_fps": 30}
 
-    def __init__(self):
+    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent"]}):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
@@ -40,6 +40,32 @@ class CustomEnv(gym.Env):
                 "self_bomb_possible": Discrete(2), 
             } 
         )
+        
+        # train the model using "user input"
+        self.world, n_rounds, self.gui, self.every_step, \
+            turn_based, self.make_video, update_interval = \
+                main.my_main_parser(argv=options["argv"])
+
+        # world_controller(world, args.n_rounds,
+        #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
+        #                  make_video=args.make_video, update_interval=args.update_interval)
+        
+        # my world controller
+        if self.make_video and not self.gui.screenshot_dir.exists():
+            self.gui.screenshot_dir.mkdir()
+
+        self.gui_timekeeper = main.Timekeeper(update_interval)
+        self.world.user_input = None
+
+        # store my agent
+        self.PPO_agent = None
+        for a in self.world.agents:
+            if a.name == "user_agent":
+                self.PPO_agent = a
+        assert isinstance(self.PPO_agent, agents.Agent)
+
+        # start a new round
+        self.world.new_round()
 
 
     def my_render(self, wait_until_due):
@@ -111,34 +137,11 @@ class CustomEnv(gym.Env):
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
-    def reset(self, seed=None, options=None):
+    def reset(self, seed = None):
         super().reset(seed=seed) # following documentation
-        # start a new round
-
-        # train the model using "user input"
-        self.world, n_rounds, self.gui, self.every_step, \
-            turn_based, self.make_video, update_interval = \
-                main.my_main_parser(argv=["play","--no-gui","--my-agent","user_agent"])
-
-        # world_controller(world, args.n_rounds,
-        #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
-        #                  make_video=args.make_video, update_interval=args.update_interval)
         
-        # my world controller
-        if self.make_video and not self.gui.screenshot_dir.exists():
-            self.gui.screenshot_dir.mkdir()
-
-        self.gui_timekeeper = main.Timekeeper(update_interval)
-        self.world.user_input = None
-
-        # one CustomEnv only run one round
+        # start a new round
         self.world.new_round()
-
-        self.PPO_agent = None
-        for a in self.world.agents:
-            if a.name == "user_agent":
-                self.PPO_agent = a
-        assert isinstance(self.PPO_agent, agents.Agent)
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
