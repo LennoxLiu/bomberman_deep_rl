@@ -140,9 +140,9 @@ class CustomEnv(gym.Env):
                 case e.INVALID_ACTION:
                     reward -= 5
                 case e.BOMB_DROPPED:
-                    reward += 1
+                    reward += 10
                 case e.BOMB_EXPLODED:
-                    reward += 1
+                    reward += 5
                 case e.CRATE_DESTROYED:
                     reward += 1
                 case e.COIN_FOUND:

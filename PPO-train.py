@@ -8,7 +8,6 @@ from tqdm import tqdm
 # Parallel environments
 # vec_env = make_vec_env("CartPole-v1", n_envs=1, seed=42)
 env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
-                                        "coin-collector",\
                                             "--scenario","coin-heaven"]})
 
 # model = PPO("MlpPolicy", env, verbose=1)
