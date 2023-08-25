@@ -29,7 +29,7 @@ class CustomEnv(gym.Env):
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict( 
             {   
-                "step": Discrete(s.MAX_STEPS), 
+                "step": Discrete(s.MAX_STEPS + 1), 
                 "field": Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
                 # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
@@ -153,7 +153,7 @@ class CustomEnv(gym.Env):
     def fromStateToObservation(self, game_state):
         observation = {}
         observation["step"] = game_state["step"]
-        assert Discrete(s.MAX_STEPS).contains(observation["step"])
+        assert Discrete(s.MAX_STEPS + 1).contains(observation["step"])
         
         # 0: ston walls, 1: free tiles, 2: crates, 
         observation["field"] = game_state["field"].astype(np.uint8) + 1

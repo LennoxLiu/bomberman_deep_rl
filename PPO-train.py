@@ -9,11 +9,13 @@ from tqdm import tqdm
 # vec_env = make_vec_env("CartPole-v1", n_envs=1, seed=42)
 vec_env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent", "--scenario", "coin-heaven"]})
 
-# model = PPO("MultiInputPolicy", vec_env, verbose=1)
-model = PPO.load("./PPO/ppo_cartpole", vec_env)
+model = PPO("MultiInputPolicy", vec_env, verbose=1)
+# model = PPO.load("./PPO/ppo_cartpole", vec_env)
 # model.learn(total_timesteps=400)
-for _ in tqdm(range(250)):
+for turn in tqdm(range(250)):
     model.learn(total_timesteps=400)
+    if turn % 10 == 0:
+        model.save("./PPO/ppo_cartpole")
 model.save("./PPO/ppo_cartpole")
 
 # del model # remove to demonstrate saving and loading
