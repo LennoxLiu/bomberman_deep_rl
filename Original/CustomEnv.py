@@ -167,7 +167,6 @@ class CustomEnv(gym.Env):
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     reward += 5
-                    self.PPO_agent.logger.info("Move reward")
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
@@ -186,14 +185,14 @@ class CustomEnv(gym.Env):
                     reward += 500
                 case e.KILLED_SELF:
                     reward -= 200
-                    self.PPO_agent.logger.info("KILLED_SELF")
+                    print("KILLED_SELF")
                 case e.GOT_KILLED:
                     reward -= 100
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
                     reward += 500
-                    self.PPO_agent.logger.info("SURVIVED_ROUND")
+
 
         # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
