@@ -134,7 +134,8 @@ class CustomEnv(gym.Env):
             else:
                 truncated = True
 
-        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
+        # the reward in gym is the smaller the better
+        return observation, -reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
     def reset(self, seed = None):
