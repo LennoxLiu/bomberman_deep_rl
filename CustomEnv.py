@@ -128,7 +128,7 @@ class CustomEnv(gym.Env):
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 1
+                    reward += 2
                 case e.WAITED:
                     reward += 0.5
                 case e.INVALID_ACTION:
