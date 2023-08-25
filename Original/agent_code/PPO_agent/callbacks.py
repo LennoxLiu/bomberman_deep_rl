@@ -8,5 +8,5 @@ def setup(self):
 def act(self, game_state: dict):
     observation = fromStateToObservation(game_state)
     action, _states = self.model.predict(observation)
-    # print(ACTION_MAP[action])
+    print(ACTION_MAP[action])
     return ACTION_MAP[action]
