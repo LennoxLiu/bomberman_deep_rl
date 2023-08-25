@@ -4,6 +4,7 @@ from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
 from gymnasium.spaces import Box, Dict, Discrete, MultiBinary, MultiDiscrete
 import settings as s
+import events as e
 
 import main
 from environment import BombeRLeWorld, GUI
@@ -25,19 +26,19 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         # Do not pass "round", opponent score
-        self.observation_space = spaces.Dict( \
+        self.observation_space = spaces.Dict( 
             {   
-                "step": Discrete(s.MAX_STEPS), \ 
-                "field": Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
+                "step": Discrete(s.MAX_STEPS), 
+                "field": Box(low = 0, high = 6, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
                 # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self
-                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
-                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), \
-                "self": Dict({  "score": Box(low=0, dtype=np.uint16), \
-                                "bomb_possible": Discrete(2), \
-                            }), \
-            } \
+                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
+                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
+                "self": Dict({  "score": Box(low=0, dtype=np.uint16), 
+                                "bomb_possible": Discrete(2), 
+                            }), 
+            } 
         )
 
 
@@ -57,10 +58,53 @@ class CustomEnv(gym.Env):
         self.world.do_step(ACTION_MAP[action])
         self.user_input = None
         
-        # how to get observation in here?
-        get_state_for_agent()
+        # get observation
+        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        observation = self.fromStateToObservation(game_state)
 
-        return observation, reward, terminated, truncated, _
+        # get reward
+        # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
+        reward = 0
+        for event in self.events:
+            match(event):
+                case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
+                    reward += 5
+                case e.WAITED:
+                    reward -= 5
+                case e.INVALID_ACTION:
+                    reward -= 50
+                case e.BOMB_DROPPED:
+                    reward += 10
+                case e.BOMB_EXPLODED:
+                    reward += 1
+                case e.CRATE_DESTROYED:
+                    reward += 10
+                case e.COIN_FOUND:
+                    reward += 20
+                case e.COIN_COLLECTED:
+                    reward += 100
+                case e.KILLED_OPPONENT:
+                    reward += 500
+                case e.KILLED_SELF:
+                    reward -= 100
+                case e.GOT_KILLED:
+                    reward -= 500
+                case e.OPPONENT_ELIMINATED:
+                    reward -= 10
+                case e.SURVIVED_ROUND:
+                    reward += 500
+
+        # terminated or trunctated
+        terminated = False
+        truncated = False
+        if self.world.running == False:
+            if self.world.step == s.MAX_STEPS:
+                terminated = True
+            else:
+                truncated = True
+
+        return observation, reward, terminated, truncated, None
+
 
     def reset(self, seed=None, options=None):
         super().reset(seed=seed) # following documentation
@@ -134,10 +178,15 @@ class CustomEnv(gym.Env):
 
 
     def close(self):
-        None
+        if self.make_video:
+            self.gui.make_video()
+        
+        # Can render end screen until next round is queried
+        
+        self.world.end()
 
 
 if __name__ == "__main__":
-    env = CustomEnv(arg1, ...)
+    env = CustomEnv()
     # It will check your custom environment and output additional warnings if needed
     check_env(env)
