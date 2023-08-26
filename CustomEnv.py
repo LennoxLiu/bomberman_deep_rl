@@ -23,9 +23,9 @@ def fromStateToObservation(game_state):
         observation["coins_and_agents"] = np.zeros((s.COLS, s.ROWS))
         for coin in game_state["coins"]:
             observation["coins_and_agents"][coin] = 1
-        observation["coins_and_agents"][game_state["self"][3]] = 2
         for other in game_state["others"]:
-            observation["coins_and_agents"][other[3]] = 3
+            observation["coins_and_agents"][other[3]] = 2
+        observation["coins_and_agents"][game_state["self"][3]] = 3
 
         # 7~7+s.EXPLOSION_TIMER: explosion map
         explosion_map = game_state["explosion_map"].astype(np.uint8)
@@ -65,8 +65,9 @@ class CustomEnv(gym.Env):
                 # -1: ston walls, 0: free tiles, 1: crates
                 
                 "coins_and_agents": Box(low = 0, high = 2, shape = (s.COLS, s.ROWS), dtype = np.uint8),
-                # 0: nothing, 1: coin, 2:self
-                # 3: other agent
+                # 0: nothing, 1: coin, 
+                # 2: other agent
+                # 3: self
                 
                 "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
                 "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8),
