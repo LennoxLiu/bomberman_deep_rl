@@ -11,8 +11,8 @@ env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
                                             "coin_collector_agent", \
                                             "--scenario","loot-crate-3"]})
 
-model = PPO("MultiInputPolicy", env, verbose=1)
-# model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
+# model = PPO("MultiInputPolicy", env, verbose=1)
+model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
     if turn % 5 == 0:
