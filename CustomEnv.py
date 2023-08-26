@@ -15,17 +15,17 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = {}
-        # 0: ston walls, 1: free tiles, 2: crates, 
-        observation["field"] = game_state["field"].astype(np.uint8) + 1
-        #3: coins,
+        # -1: ston walls, 0: free tiles, 1: crates, 
+        observation["field"] = game_state["field"].astype(np.int8)
+        
+        # 0: nothing, 1: coin, 2:self
+        # 3: other agent
+        observation["coins_and_agents"] = np.zeros((s.COLS, s.ROWS))
         for coin in game_state["coins"]:
-            observation["field"][coin] = 3
-        # 4: no bomb opponents, 5: has bomb opponents,
+            observation["coins_and_agents"][coin] = 1
+        observation["coins_and_agents"][game_state["self"][3]] = 2
         for other in game_state["others"]:
-            if other[2] == False: # bombs_left == False
-                observation["field"][other[3]] = 4
-            else:
-                observation["field"][other[3]] = 5
+            observation["coins_and_agents"][other[3]] = 3
 
         # 7~7+s.EXPLOSION_TIMER: explosion map
         explosion_map = game_state["explosion_map"].astype(np.uint8)
@@ -35,18 +35,13 @@ def fromStateToObservation(game_state):
         # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
         for bomb in game_state["bombs"]:
             observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
-
-        # 6: self (needs to be present at any time)
-        observation["field"][game_state["self"][3]] = 6
 
         observation["field"] = observation["field"].reshape(-1)
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
-    
+        
         observation["bomb_possible"] = int(game_state["self"][2])
         
-        assert spaces.Dict({"field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
-
+        
+        assert .contains(observation)
         return observation
 
 
@@ -66,13 +61,16 @@ class CustomEnv(gym.Env):
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
             {
-                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),
-                # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
-                # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
+                "field": Box(low = -1, high = 1, shape = (s.COLS, s.ROWS), dtype = np.int8),
+                # -1: ston walls, 0: free tiles, 1: crates
+                
+                "coins_and_agents": Box(low = 0, high = 2, shape = (s.COLS, s.ROWS), dtype = np.uint8),
+                # 0: nothing, 1: coin, 2:self
+                # 3: other agent
+                
+                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
+                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8),
+                
                 "bomb_possible": spaces.Discrete(2)
             }
         )
