@@ -216,7 +216,7 @@ class CustomEnv(gym.Env):
                 case e.BOMB_EXPLODED:
                     reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 20
+                    reward += 50
                 case e.COIN_FOUND:
                     reward += 50
                 case e.COIN_COLLECTED:
@@ -224,9 +224,9 @@ class CustomEnv(gym.Env):
                 case e.KILLED_OPPONENT:
                     reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 100
-                case e.GOT_KILLED:
                     reward -= 200
+                case e.GOT_KILLED:
+                    reward -= 500
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
