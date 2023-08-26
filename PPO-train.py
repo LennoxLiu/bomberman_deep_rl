@@ -15,7 +15,7 @@ model = PPO("MultiInputPolicy", env, verbose=1)
 # model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
 for turn in tqdm(range(20000)):
     model.learn(total_timesteps=400)
-    if turn % 10 == 0:
+    if turn % 5 == 0:
         model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
 model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
 
