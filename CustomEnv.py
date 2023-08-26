@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, MultiDiscrete
 import settings as s
 import events as e
 import agents
@@ -15,7 +15,8 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = {}
-        # 0: ston walls, 1: free tiles, 2: crates, 
+        one_array = np.ones(s.COLS * s.ROWS)
+        # 0: stone walls, 1: free tiles, 2: crates, 
         observation["field"] = game_state["field"].astype(np.uint8) + 1
         #3: coins,
         for coin in game_state["coins"]:
@@ -34,18 +35,17 @@ def fromStateToObservation(game_state):
         
         # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
-
+            observation["field"][bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
+        
         # 6: self (needs to be present at any time)
         observation["field"][game_state["self"][3]] = 6
 
-        observation["field"] = observation["field"].reshape(-1)
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
-    
+        observation["field"] = observation["field"].flatten()
+        assert MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8).contains(observation["field"])
+
         observation["bomb_possible"] = int(game_state["self"][2])
         
-        assert spaces.Dict({"field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
+        assert spaces.Dict({"field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
 
         return observation
 
@@ -63,15 +63,15 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        # Do not pass "round", opponent score
+        one_array = np.ones(s.COLS * s.ROWS)
         self.observation_space = spaces.Dict(
             {
-                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),
-                # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
+                "field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),
+                # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self
                 # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+                # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
             
                 "bomb_possible": spaces.Discrete(2)
             }
