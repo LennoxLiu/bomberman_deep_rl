@@ -156,12 +156,42 @@ class CustomEnv(gym.Env):
         if current_pos not in self.trajectory:
             new_visit_reward = 10
         
-        # away from explosion reward
+        # escape from explosion reward
+        escape_bomb_reward = 0
+        def in_bomb_range(bomb_x,bomb_y,x,y):
+            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
+                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
+        
+        if len(self.trajectory) > 0:
+            x, y = self.trajectory[-1] # last position
+            x_now, y_now =current_pos
+            # Add proposal to run away from any nearby bomb about to blow
+            for (xb, yb), t in game_state['bombs']:
+                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
+                    # Run away
+                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
+                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
+                        escape_bomb_reward += 20
 
+                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
+                    # Run away
+                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
+                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
+                        escape_bomb_reward += 20
+
+                # Try random direction if directly on top of a bomb
+                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
+                    and ACTION_MAP[action] != "BOMB":
+                    escape_bomb_reward += 10
+
+                # If last pos in bomb range and now not
+                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
+                    escape_bomb_reward += 30
+                    
 
         self.trajectory.append(current_pos)
 
-        # get reward
+        # Get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
         reward = new_visit_reward - non_explore_punishment
         for event in self.PPO_agent.events:
