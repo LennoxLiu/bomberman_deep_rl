@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, MultiDiscrete, Dict, Discrete
 import settings as s
 import events as e
 import agents
@@ -15,33 +15,43 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = {}
-        # -1: ston walls, 0: free tiles, 1: crates, 
-        observation["field"] = game_state["field"].astype(np.int8)
-        
-        # 0: nothing, 1: coin, 2:self
-        # 3: other agent
-        observation["coins_and_agents"] = np.zeros((s.COLS, s.ROWS))
+        one_array = np.ones(s.COLS* s.ROWS)
+
+        # 0: ston walls, 1: free tiles, 2: crates
+        observation["field"] = game_state["field"].astype(np.uint8).flatten()
+        observation["field"] += 1
+        assert MultiDiscrete(nvec= one_array * 3, dtype = np.uint8).contains(observation["field"])
+
+        # 0: nothing, 1: coin, 
+        # 2: other agent with bomb, 3: other agent without bomb
+        # 4: self
+        observation["coins_and_agents"] = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
         for coin in game_state["coins"]:
             observation["coins_and_agents"][coin] = 1
         for other in game_state["others"]:
-            observation["coins_and_agents"][other[3]] = 2
-        observation["coins_and_agents"][game_state["self"][3]] = 3
+            if other[2] == True: # has bomb
+                observation["coins_and_agents"][other[3]] = 2 
+            else:
+                observation["coins_and_agents"][other[3]] = 3
+        observation["coins_and_agents"][game_state["self"][3]] = 4
+        observation["coins_and_agents"] = observation["coins_and_agents"].flatten()
+        assert MultiDiscrete(nvec= one_array * 5, dtype = np.uint8).contains(observation["coins_and_agents"])
 
-        # 7~7+s.EXPLOSION_TIMER: explosion map
+        # 0: nothing
+        # 1: bomb
+        # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
         explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
-        
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        explosion_map[explosion_map > 0] += 1
+        observation["bomb_and_explosion"] = explosion_map
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
+            observation["bomb_and_explosion"][bomb[0]] = 1
+        observation["bomb_and_explosion"] = observation["bomb_and_explosion"].flatten()
+        assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
-        observation["field"] = observation["field"].reshape(-1)
-        
         observation["bomb_possible"] = int(game_state["self"][2])
+        assert Discrete(2).contains(observation["bomb_possible"])
         
-        
-        assert .contains(observation)
+        spaces.Dict({"field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),"coins_and_agents": MultiDiscrete(nvec= one_array * 5, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
         return observation
 
 
@@ -58,21 +68,24 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
+        one_array = np.ones(s.COLS* s.ROWS)
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
             {
-                "field": Box(low = -1, high = 1, shape = (s.COLS, s.ROWS), dtype = np.int8),
-                # -1: ston walls, 0: free tiles, 1: crates
+                "field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),
+                # 0: ston walls, 1: free tiles, 2: crates
                 
-                "coins_and_agents": Box(low = 0, high = 2, shape = (s.COLS, s.ROWS), dtype = np.uint8),
+                "coins_and_agents": MultiDiscrete(nvec= one_array * 5, dtype = np.uint8),
                 # 0: nothing, 1: coin, 
-                # 2: other agent
-                # 3: self
+                # 2: other agent with bomb, 3: other agent without bomb
+                # 4: self
                 
-                "bombs": Box(low = 0, high = s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8), 
-                "explosion_map": Box(low = 0, high = s.EXPLOSION_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8),
-                
-                "bomb_possible": spaces.Discrete(2)
+                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),
+                # 0: nothing
+                # 1: bomb
+                # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+
+                "bomb_possible": Discrete(2)
             }
         )
 

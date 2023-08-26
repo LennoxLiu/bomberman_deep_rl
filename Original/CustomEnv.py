@@ -2,7 +2,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box
+from gymnasium.spaces import Box, MultiDiscrete, Dict, Discrete
 import settings as s
 import events as e
 import agents
@@ -15,38 +15,43 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = {}
-        # 0: ston walls, 1: free tiles, 2: crates, 
-        observation["field"] = game_state["field"].astype(np.uint8) + 1
-        #3: coins,
+        one_array = np.ones(s.COLS* s.ROWS)
+
+        # 0: ston walls, 1: free tiles, 2: crates
+        observation["field"] = game_state["field"].astype(np.uint8).flatten()
+        observation["field"] += 1
+        assert MultiDiscrete(nvec= one_array * 3, dtype = np.uint8).contains(observation["field"])
+
+        # 0: nothing, 1: coin, 
+        # 2: other agent with bomb, 3: other agent without bomb
+        # 4: self
+        observation["coins_and_agents"] = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
         for coin in game_state["coins"]:
-            observation["field"][coin] = 3
-        # 4: no bomb opponents, 5: has bomb opponents,
+            observation["coins_and_agents"][coin] = 1
         for other in game_state["others"]:
-            if other[2] == False: # bombs_left == False
-                observation["field"][other[3]] = 4
+            if other[2] == True: # has bomb
+                observation["coins_and_agents"][other[3]] = 2 
             else:
-                observation["field"][other[3]] = 5
+                observation["coins_and_agents"][other[3]] = 3
+        observation["coins_and_agents"][game_state["self"][3]] = 4
+        observation["coins_and_agents"] = observation["coins_and_agents"].flatten()
+        assert MultiDiscrete(nvec= one_array * 5, dtype = np.uint8).contains(observation["coins_and_agents"])
 
-        # 7~7+s.EXPLOSION_TIMER: explosion map
+        # 0: nothing
+        # 1: bomb
+        # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
         explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
-        
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        explosion_map[explosion_map > 0] += 1
+        observation["bomb_and_explosion"] = explosion_map
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 7 + s.EXPLOSION_TIMER + bomb[1]
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field"])
+            observation["bomb_and_explosion"][bomb[0]] = 1
+        observation["bomb_and_explosion"] = observation["bomb_and_explosion"].flatten()
+        assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
-        # 6: self (needs to be present at any time)
-        observation["field"][game_state["self"][3]] = 6
-
-        observation["field"] = observation["field"].reshape(-1)
-        assert Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8).contains(observation["field"])
-    
         observation["bomb_possible"] = int(game_state["self"][2])
+        assert Discrete(2).contains(observation["bomb_possible"])
         
-        assert spaces.Dict({"field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
-
+        spaces.Dict({"field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),"coins_and_agents": MultiDiscrete(nvec= one_array * 5, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
         return observation
 
 
@@ -63,17 +68,24 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
+        one_array = np.ones(s.COLS* s.ROWS)
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
             {
-                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),
-                # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
-                # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
-                "bomb_possible": spaces.Discrete(2)
+                "field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),
+                # 0: ston walls, 1: free tiles, 2: crates
+                
+                "coins_and_agents": MultiDiscrete(nvec= one_array * 5, dtype = np.uint8),
+                # 0: nothing, 1: coin, 
+                # 2: other agent with bomb, 3: other agent without bomb
+                # 4: self
+                
+                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),
+                # 0: nothing
+                # 1: bomb
+                # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+
+                "bomb_possible": Discrete(2)
             }
         )
 
@@ -133,8 +145,7 @@ class CustomEnv(gym.Env):
         if game_state == None: # the agent is dead
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            
-            return observation, -100, False, True, {"events" : self.PPO_agent.events}
+            game_state = self.PPO_agent.last_game_state
         else:
             observation = fromStateToObservation(game_state)
 
@@ -142,8 +153,7 @@ class CustomEnv(gym.Env):
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            return observation, 100, terminated, False, {"events" : self.PPO_agent.events}
-
+            
         a = math.log(5)/2#math.log(2)
         b = 5**2 #2**2
         # calculate non-explore punishment
@@ -158,9 +168,42 @@ class CustomEnv(gym.Env):
         if current_pos not in self.trajectory:
             new_visit_reward = 10
         
+        # escape from explosion reward
+        escape_bomb_reward = 0
+        def in_bomb_range(bomb_x,bomb_y,x,y):
+            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
+                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
+        
+        if len(self.trajectory) > 0:
+            x, y = self.trajectory[-1] # last position
+            x_now, y_now =current_pos
+            # Add proposal to run away from any nearby bomb about to blow
+            for (xb, yb), t in game_state['bombs']:
+                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
+                    # Run away
+                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
+                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
+                        escape_bomb_reward += 20
+
+                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
+                    # Run away
+                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
+                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
+                        escape_bomb_reward += 20
+
+                # Try random direction if directly on top of a bomb
+                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
+                    and ACTION_MAP[action] != "BOMB":
+                    escape_bomb_reward += 10
+
+                # If last pos in bomb range and now not
+                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
+                    escape_bomb_reward += 30
+                    
+
         self.trajectory.append(current_pos)
 
-        # get reward
+        # Get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
         reward = new_visit_reward - non_explore_punishment
         for event in self.PPO_agent.events:
@@ -170,24 +213,23 @@ class CustomEnv(gym.Env):
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 6
+                    reward -= 15
                 case e.BOMB_DROPPED:
                     reward += 3
                 case e.BOMB_EXPLODED:
                     reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 5
+                    reward += 20
                 case e.COIN_FOUND:
-                    reward += 10
+                    reward += 50
                 case e.COIN_COLLECTED:
-                    reward += 100
+                    reward += 1000
                 case e.KILLED_OPPONENT:
-                    reward += 500
+                    reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 200
-                    print("KILLED_SELF")
-                case e.GOT_KILLED:
                     reward -= 100
+                case e.GOT_KILLED:
+                    reward -= 200
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
