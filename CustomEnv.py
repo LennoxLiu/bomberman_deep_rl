@@ -174,7 +174,8 @@ class CustomEnv(gym.Env):
                         escape_bomb_reward += 20
                     # Go towards bomb
                     if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP'):
+                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
                         escape_bomb_reward -= 10
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
@@ -183,7 +184,8 @@ class CustomEnv(gym.Env):
                         escape_bomb_reward += 20
                     # Go towards bomb
                     if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT'):
+                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
                         escape_bomb_reward -= 10
 
                 # Try random direction if directly on top of a bomb
