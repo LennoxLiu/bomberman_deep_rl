@@ -156,6 +156,9 @@ class CustomEnv(gym.Env):
         if current_pos not in self.trajectory:
             new_visit_reward = 10
         
+        # away from explosion reward
+
+
         self.trajectory.append(current_pos)
 
         # get reward
@@ -174,7 +177,7 @@ class CustomEnv(gym.Env):
                 case e.BOMB_EXPLODED:
                     reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 5
+                    reward += 20
                 case e.COIN_FOUND:
                     reward += 50
                 case e.COIN_COLLECTED:
