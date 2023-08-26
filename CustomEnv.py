@@ -168,7 +168,7 @@ class CustomEnv(gym.Env):
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 10
+                    reward -= 15
                 case e.BOMB_DROPPED:
                     reward += 3
                 case e.BOMB_EXPLODED:
