@@ -12,7 +12,7 @@ for turn in tqdm(range(20000)):
         del env
         env = CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent",\
                                             "coin_collector_agent", \
-                                            "--scenario","loot-crate-3"]})
+                                            "--scenario","loot-crate-4"]})
         
         if model != None:
             model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
