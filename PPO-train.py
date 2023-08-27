@@ -6,12 +6,12 @@ from CustomEnv import CustomEnv
 from tqdm import tqdm
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "coin_collector_agent", \
+                                            # "coin_collector_agent", \
                                             "--scenario","loot-crate-4"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)
-model = PPO("MlpPolicy", env, verbose=1)
+model = PPO("MlpPolicy", env, verbose=1, learning_rate = 0.001, n_steps = 64, stats_window_size = 400)
 # model = PPO.load(model_path, env)
         
 for turn in tqdm(range(20000)):
