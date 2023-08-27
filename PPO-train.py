@@ -12,7 +12,7 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)
-model = PPO("MultiInputPolicy", env, verbose=1, learning_rate = 0.001, stats_window_size = 400)
+model = PPO("MultiInputPolicy", env, verbose=1, learning_rate = 0.001, n_steps = 16, batch_size = 4, stats_window_size = 400)
 # model = PPO.load(model_path, env)
         
 for turn in tqdm(range(20000)):
