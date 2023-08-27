@@ -57,6 +57,23 @@ def fromStateToObservation(game_state):
         return observation
 
 
+def in_bomb_range(field,bomb_x,bomb_y,x,y):
+            is_in_bomb_range_x = False
+            is_in_bomb_range_y = False
+            if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
+                is_in_bomb_range_x = True
+                for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
+                    if field[x,y_temp] == -1:
+                        is_in_bomb_range_x = False
+            
+            if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
+                is_in_bomb_range_y = True
+                for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
+                    if field[x_temp,y] == -1:
+                        is_in_bomb_range_y = False
+            return is_in_bomb_range_x or is_in_bomb_range_y
+
+
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
@@ -113,6 +130,7 @@ class CustomEnv(gym.Env):
 
         terminated = False
         truncated = False
+        last_action =  self.PPO_agent.last_action
 
         # get observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
@@ -144,66 +162,64 @@ class CustomEnv(gym.Env):
         
         # escape from explosion reward
         escape_bomb_reward = 0
-        def in_bomb_range(bomb_x,bomb_y,x,y):
-            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
-                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
-        
-        
-        meaningfull_bomb_reward = 0
+        field = game_state["field"]
         if len(self.trajectory) > 0:
             x, y = self.trajectory[-1] # last position
-            x_now, y_now =current_pos
+            x_now, y_now = current_pos
             # Add proposal to run away from any nearby bomb about to blow
             for (xb, yb), t in game_state['bombs']:
                 if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
                     # Run away
-                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
-                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
+                    if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
+                        ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
                         escape_bomb_reward += 100
                     # Go towards bomb or wait
-                    if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+                    if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
+                        ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
+                        (last_action ==  'WAIT'):
+                        escape_bomb_reward -= 100
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
-                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
+                    if ((xb > x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                        ((xb < x) and last_action == 'RIGHT' and field[x+1,y] == 0):
                         escape_bomb_reward += 100
                     # Go towards bomb or wait
-                    if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+                    if ((xb > x) and last_action == 'RIGHT' and field[x+1,y] == 0) or \
+                        ((xb < x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                        (last_action ==  'WAIT'):
+                        escape_bomb_reward -= 100
 
                 # Try random direction if directly on top of a bomb
                 if xb == x and yb == y:
-                    if (ACTION_MAP[action] == "UP" and game_state["field"][x,y+1] == 0) or \
-                        (ACTION_MAP[action] == "DOWN" and game_state["field"][x,y-1] == 0) or \
-                        (ACTION_MAP[action] == "LEFT" and game_state["field"][x-1,y] == 0) or \
-                        (ACTION_MAP[action] == "RIGHT" and game_state["field"][x+1,y] == 0)    :
-                        escape_bomb_reward += 30
+                    if (last_action == "UP" and field[x,y+1] == 0) or \
+                        (last_action == "DOWN" and field[x,y-1] == 0) or \
+                        (last_action == "LEFT" and field[x-1,y] == 0) or \
+                        (last_action == "RIGHT" and field[x+1,y] == 0)    :
+                        escape_bomb_reward += 100
 
                 # If last pos in bomb range and now not
-                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 200    
+                if in_bomb_range(field,xb,yb,x,y) and not in_bomb_range(field,xb,yb,x_now,y_now):
+                    escape_bomb_reward += 200
 
-            # meaningfull bomb reward
-            if ACTION_MAP[action] == "BOMB":
-                # if there's a agent in bomb range, reward ++
-                for agent in self.world.active_agents:
-                    if agent != self.PPO_agent and \
-                        in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 300
-                
-                field = game_state["field"]
-                for x_temp in range(field.shape[0]):
-                    for y_temp in range(field.shape[1]):
-                        if field[x_temp,y_temp] == 1 and \
-                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 200
+                # if last pos not in bomb range and now yes
+                if in_bomb_range(field,xb,yb,x_now,y_now) and not in_bomb_range(field,xb,yb,x,y):
+                    escape_bomb_reward -= 200    
 
-        self.trajectory.append(current_pos)
+        # meaning full bomb position reward
+        meaningfull_bomb_reward = 0
+        x, y = current_pos
+        if last_action == "BOMB":
+            # if there's a agent in bomb range, reward ++
+            for agent in self.world.active_agents:
+                if agent != self.PPO_agent and \
+                    in_bomb_range(x,y,agent.x,agent.y): 
+                    meaningfull_bomb_reward += 300
+            
+            for x_temp in range(field.shape[0]):
+                for y_temp in range(field.shape[1]):
+                    if field[x_temp,y_temp] == 1 and \
+                        in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                        meaningfull_bomb_reward += 150
 
         # Get game event reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
@@ -239,6 +255,9 @@ class CustomEnv(gym.Env):
 
         survive_reward = 0.125* game_state["step"] # considering invad operation punishment = 50
         reward = survive_reward + game_event_reward + new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
+        
+        # maintain self.trajectory
+        self.trajectory.append(current_pos)
         
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
