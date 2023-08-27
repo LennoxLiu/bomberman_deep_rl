@@ -242,7 +242,7 @@ class CustomEnv(gym.Env):
                 case e.KILLED_OPPONENT:
                     reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 200
+                    reward += 300 # decrease the got killed punishement when exploring
                 case e.GOT_KILLED:
                     reward -= 500
                 case e.OPPONENT_ELIMINATED:
