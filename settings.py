@@ -30,7 +30,7 @@ SCENARIOS = {
         "COIN_COUNT": 30 
     },
     "loot-crate-4": { 
-        "CRATE_DENSITY": 0.1, 
+        "CRATE_DENSITY": 0.15, 
         "COIN_COUNT": 40 
     },
     # this is the tournament game mode

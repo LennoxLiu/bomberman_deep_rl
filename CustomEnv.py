@@ -144,12 +144,12 @@ class CustomEnv(gym.Env):
             if self.world.step == s.MAX_STEPS:
                 terminated = True
             
-        a = math.log(5)/2#math.log(2)
-        b = 5**2 #2**2
+        a = math.log(2)
+        b = 5**2
         # calculate non-explore punishment
         non_explore_punishment = 0
         current_pos = game_state["self"][3]
-        for i in range(len(self.trajectory)):
+        for i in range(min(len(self.trajectory), 15)): # only calculate the recent 5 pos
             pos = self.trajectory[-i]
             non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
@@ -207,49 +207,52 @@ class CustomEnv(gym.Env):
                 for agent in self.world.active_agents:
                     if agent != self.PPO_agent and \
                         in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 50
+                        meaningfull_bomb_reward += 100
                 
                 field = game_state["field"]
                 for x_temp in range(field.shape[0]):
                     for y_temp in range(field.shape[1]):
                         if field[x_temp,y_temp] == 1 and \
                             in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 20
+                            meaningfull_bomb_reward += 50
 
         self.trajectory.append(current_pos)
 
-        # Get reward
+        # Get game event reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
+        game_event_reward = 0
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
+                    game_event_reward += 5
                 case e.WAITED:
-                    reward += 1
+                    game_event_reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 15
+                    game_event_reward -= 50
                 case e.BOMB_DROPPED:
-                    reward += 3
+                    game_event_reward += 50
                 case e.BOMB_EXPLODED:
-                    reward += 3
+                    game_event_reward += 0
                 case e.CRATE_DESTROYED:
-                    reward += 50
+                    game_event_reward += 50
                 case e.COIN_FOUND:
-                    reward += 50
+                    game_event_reward += 50
                 case e.COIN_COLLECTED:
-                    reward += 1000
+                    game_event_reward += 1000
                 case e.KILLED_OPPONENT:
-                    reward += 5000
+                    game_event_reward += 5000
                 case e.KILLED_SELF:
-                    reward += 300 # decrease the got killed punishment when exploring
+                    game_event_reward -= 200 * (1- game_state["step"]/s.MAX_STEPS) + 50# decrease the got killed punishment when exploring
                 case e.GOT_KILLED:
-                    reward -= 500
+                    game_event_reward -= 300 * (1- game_state["step"]/s.MAX_STEPS) + 50
                 case e.OPPONENT_ELIMINATED:
-                    reward -= 10
+                    game_event_reward -= 10
                 case e.SURVIVED_ROUND:
-                    reward += 500
+                    game_event_reward += 500
 
+        survive_reward = 0.25* game_state["step"] # considering invad operation punishment = 50
+        reward = survive_reward + game_event_reward + new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
+        
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 

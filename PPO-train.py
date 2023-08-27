@@ -10,21 +10,29 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
                                             "--scenario","loot-crate-4"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
+def linear_schedule(initial_value: float):
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+    def func(progress_remaining: float):
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return progress_remaining * initial_value
+
+    return func
+
 env = CustomEnv(options = option)
-model = PPO("MlpPolicy", env, verbose=1, learning_rate = 0.001, n_steps = 64, stats_window_size = 400)
-# model = PPO.load(model_path, env)
+# model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.001), n_steps = 2048, batch_size = 64, stats_window_size = 10)
+model = PPO.load(model_path, env = env, force_reset = True)
         
-for turn in tqdm(range(20000)):
-    if turn % 100 == 0 and turn != 0: # reload environment for every 100 turns
-        del env
-        env = CustomEnv(options = option)
-        
-        model.save(model_path)
-        del model
-        model = PPO.load(model_path, env)
-
-    model.learn(total_timesteps=400)
-    if turn % 5 == 0:
-        model.save(model_path)
-
-model.save(model_path)
+while True:
+    model.learn(total_timesteps=20480, progress_bar=True)
+    model.save(model_path)
