@@ -14,38 +14,45 @@ import math
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-        observation = {}
         one_array = np.ones(s.COLS * s.ROWS)
-        # 0: stone walls, 1: free tiles, 2: crates, 
-        observation["field"] = game_state["field"].astype(np.uint8) + 1
+        
+        # 0: ston walls, 1: free tiles, 2: crates, 
+        observation = game_state["field"].astype(np.uint8) + 1
         #3: coins,
         for coin in game_state["coins"]:
-            observation["field"][coin] = 3
+            observation[coin] = 3
         # 4: no bomb opponents, 5: has bomb opponents,
         for other in game_state["others"]:
             if other[2] == False: # bombs_left == False
-                observation["field"][other[3]] = 4
+                observation[other[3]] = 4
             else:
-                observation["field"][other[3]] = 5
+                observation[other[3]] = 5
 
-        # 7~7+s.EXPLOSION_TIMER: explosion map
-        explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
-        
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        if game_state["self"][2] == False:
+            observation[game_state["self"][3]] = 6 # 6: self without bomb
+        else:
+            observation[game_state["self"][3]] = 7 # 7: self with bomb
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
-        
-        # 6: self (needs to be present at any time)
-        observation["field"][game_state["self"][3]] = 6
+            if bomb[0] == game_state["self"][3]:
+                observation[game_state["self"][3]] = 8 #8: self with bomb on top
 
-        observation["field"] = observation["field"].flatten()
-        assert MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8).contains(observation["field"])
-
-        observation["bomb_possible"] = int(game_state["self"][2])
+        # 9~9+s.EXPLOSION_TIMER: explosion map
+        explosion_map = game_state["explosion_map"].astype(np.uint8)
+        # Replace elements in observation with corresponding elements+9 from explosion_map if explosion_map elements are non-zero
+        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 9
         
-        assert spaces.Dict({"field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
+        # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
+        for coin in game_state["coins"]:
+            if explosion_map[coin] != 0:
+                observation[coin] += s.EXPLOSION_TIMER + 1
+
+        # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
+        for bomb in game_state["bombs"]:
+            observation[bomb[0]] = 11 + s.EXPLOSION_TIMER*2 + bomb[1]
+
+        observation = observation.flatten()
+        
+        assert MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8).contains(observation)
 
         return observation
 
@@ -64,18 +71,13 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         one_array = np.ones(s.COLS * s.ROWS)
-        self.observation_space = spaces.Dict(
-            {
-                "field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),
+        self.observation_space = MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8)
                 # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
-                "bomb_possible": spaces.Discrete(2)
-            }
-        )
+                # 6: self without bomb, 7: self with bomb, 8: self with bomb on top
+                # 9~9+s.EXPLOSION_TIMER: explosion map
+                # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
+                # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
