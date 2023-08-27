@@ -34,5 +34,6 @@ env = CustomEnv(options = option)
 model = PPO.load(model_path, env = env, force_reset = True)
         
 while True:
-    model.learn(total_timesteps=20480, progress_bar=True)
+    model.learn(total_timesteps=5* 20480, progress_bar=True)
+    # total_timesteps=20480
     model.save(model_path)

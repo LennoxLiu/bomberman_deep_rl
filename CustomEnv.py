@@ -234,9 +234,9 @@ class CustomEnv(gym.Env):
                 case e.BOMB_EXPLODED:
                     game_event_reward += 0
                 case e.CRATE_DESTROYED:
-                    game_event_reward += 50
+                    game_event_reward += 100
                 case e.COIN_FOUND:
-                    game_event_reward += 50
+                    game_event_reward += 100
                 case e.COIN_COLLECTED:
                     game_event_reward += 1000
                 case e.KILLED_OPPONENT:
@@ -250,7 +250,7 @@ class CustomEnv(gym.Env):
                 case e.SURVIVED_ROUND:
                     game_event_reward += 500
 
-        survive_reward = 0.25* game_state["step"] # considering invad operation punishment = 50
+        survive_reward = 0.125* game_state["step"] # considering invad operation punishment = 50
         reward = survive_reward + game_event_reward + new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
         
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
