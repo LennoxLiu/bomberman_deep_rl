@@ -149,7 +149,7 @@ class CustomEnv(gym.Env):
         # calculate non-explore punishment
         non_explore_punishment = 0
         current_pos = game_state["self"][3]
-        for i in range(min(len(self.trajectory), 15)): # only calculate the recent 5 pos
+        for i in range(min(len(self.trajectory), 100)): # only calculate the recent 5 pos
             pos = self.trajectory[-i]
             non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
@@ -175,7 +175,7 @@ class CustomEnv(gym.Env):
                     # Run away
                     if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
                         ((yb < y) and ACTION_MAP[action] == 'DOWN'):
-                        escape_bomb_reward += 20
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
                     if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
                         ((yb < y) and ACTION_MAP[action] == 'UP') or \
@@ -185,7 +185,7 @@ class CustomEnv(gym.Env):
                     # Run away
                     if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
                         ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
-                        escape_bomb_reward += 20
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
                     if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
                         ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
@@ -195,11 +195,11 @@ class CustomEnv(gym.Env):
                 # Try random direction if directly on top of a bomb
                 if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
                     and ACTION_MAP[action] != "BOMB":
-                    escape_bomb_reward += 10
+                    escape_bomb_reward += 30
 
                 # If last pos in bomb range and now not
                 if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30    
+                    escape_bomb_reward += 200    
 
             # meaningfull bomb reward
             if ACTION_MAP[action] == "BOMB":
@@ -207,14 +207,14 @@ class CustomEnv(gym.Env):
                 for agent in self.world.active_agents:
                     if agent != self.PPO_agent and \
                         in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 100
+                        meaningfull_bomb_reward += 300
                 
                 field = game_state["field"]
                 for x_temp in range(field.shape[0]):
                     for y_temp in range(field.shape[1]):
                         if field[x_temp,y_temp] == 1 and \
                             in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 50
+                            meaningfull_bomb_reward += 200
 
         self.trajectory.append(current_pos)
 
