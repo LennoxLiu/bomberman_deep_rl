@@ -14,7 +14,8 @@ import math
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-        observation = {}
+        one_array = np.ones(s.COLS * s.ROWS)
+        
         # 0: ston walls, 1: free tiles, 2: crates, 
         observation = game_state["field"].astype(np.uint8) + 1
         #3: coins,
@@ -49,12 +50,9 @@ def fromStateToObservation(game_state):
         for bomb in game_state["bombs"]:
             observation[bomb[0]] = 11 + s.EXPLOSION_TIMER*2 + bomb[1]
 
-        observation = observation.reshape(-1)
-
-        observation["bomb_possible"] = int(game_state["self"][2])
+        observation = observation.flatten()
         
-        one_array = np.ones(s.COLS * s.ROWS)
-        assert MultiDiscrete(nvec=one_array * ( 10 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8).contains(observation)
+        assert MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8).contains(observation)
 
         return observation
 
@@ -72,19 +70,14 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        # Do not pass "round", opponent score
-        self.observation_space = spaces.Dict(
-            {
-                "field": Box(low = 0, high = 7 + s.EXPLOSION_TIMER + s.BOMB_TIMER, shape = (s.COLS * s.ROWS,), dtype = np.uint8),
-                # 0: ston walls, 1: free tiles, 2: crates, 3: coins,
+        one_array = np.ones(s.COLS * s.ROWS)
+        self.observation_space = MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8)
+                # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 7+s.EXPLOSION_TIMER ~ 7+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
-                "bomb_possible": spaces.Discrete(2)
-            }
-        )
+                # 6: self without bomb, 7: self with bomb, 8: self with bomb on top
+                # 9~9+s.EXPLOSION_TIMER: explosion map
+                # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
+                # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
@@ -142,8 +135,7 @@ class CustomEnv(gym.Env):
         if game_state == None: # the agent is dead
             truncated = True
             observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            
-            return observation, -100, False, True, {"events" : self.PPO_agent.events}
+            game_state = self.PPO_agent.last_game_state
         else:
             observation = fromStateToObservation(game_state)
 
@@ -151,8 +143,7 @@ class CustomEnv(gym.Env):
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            return observation, 100, terminated, False, {"events" : self.PPO_agent.events}
-
+            
         a = math.log(5)/2#math.log(2)
         b = 5**2 #2**2
         # calculate non-explore punishment
@@ -167,11 +158,69 @@ class CustomEnv(gym.Env):
         if current_pos not in self.trajectory:
             new_visit_reward = 10
         
+        # escape from explosion reward
+        escape_bomb_reward = 0
+        def in_bomb_range(bomb_x,bomb_y,x,y):
+            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
+                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
+        
+        
+        meaningfull_bomb_reward = 0
+        if len(self.trajectory) > 0:
+            x, y = self.trajectory[-1] # last position
+            x_now, y_now =current_pos
+            # Add proposal to run away from any nearby bomb about to blow
+            for (xb, yb), t in game_state['bombs']:
+                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
+                    # Run away
+                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
+                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
+                        escape_bomb_reward += 20
+                    # Go towards bomb or wait
+                    if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
+                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
+                        escape_bomb_reward -= 20
+                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
+                    # Run away
+                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
+                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
+                        escape_bomb_reward += 20
+                    # Go towards bomb or wait
+                    if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
+                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
+                        escape_bomb_reward -= 20
+
+                # Try random direction if directly on top of a bomb
+                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
+                    and ACTION_MAP[action] != "BOMB":
+                    escape_bomb_reward += 10
+
+                # If last pos in bomb range and now not
+                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
+                    escape_bomb_reward += 30    
+
+            # meaningfull bomb reward
+            if ACTION_MAP[action] == "BOMB":
+                # if there's a agent in bomb range, reward ++
+                for agent in self.world.active_agents:
+                    if agent != self.PPO_agent and \
+                        in_bomb_range(x,y,agent.x,agent.y): 
+                        meaningfull_bomb_reward += 50
+                
+                field = game_state["field"]
+                for x_temp in range(field.shape[0]):
+                    for y_temp in range(field.shape[1]):
+                        if field[x_temp,y_temp] == 1 and \
+                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                            meaningfull_bomb_reward += 20
+
         self.trajectory.append(current_pos)
 
-        # get reward
+        # Get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment
+        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
@@ -179,31 +228,28 @@ class CustomEnv(gym.Env):
                 case e.WAITED:
                     reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 6
+                    reward -= 15
                 case e.BOMB_DROPPED:
                     reward += 3
                 case e.BOMB_EXPLODED:
                     reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 5
+                    reward += 50
                 case e.COIN_FOUND:
-                    reward += 10
+                    reward += 50
                 case e.COIN_COLLECTED:
-                    reward += 100
+                    reward += 1000
                 case e.KILLED_OPPONENT:
-                    reward += 500
+                    reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 200
-                    print("KILLED_SELF")
+                    reward += 300 # decrease the got killed punishment when exploring
                 case e.GOT_KILLED:
-                    reward -= 100
+                    reward -= 500
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
                     reward += 500
 
-
-        # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 

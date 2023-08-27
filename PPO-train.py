@@ -9,8 +9,8 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
                                             "coin_collector_agent", \
                                             "--scenario","loot-crate-4"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
-env = CustomEnv(options = option)
 
+env = CustomEnv(options = option)
 model = PPO("MlpPolicy", env, verbose=1)
 # model = PPO.load(model_path, env)
         
