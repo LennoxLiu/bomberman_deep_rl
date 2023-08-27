@@ -158,7 +158,7 @@ class CustomEnv(gym.Env):
         # new visit reward
         new_visit_reward = 0
         if current_pos not in self.trajectory:
-            new_visit_reward = 100
+            new_visit_reward = 20 + 100 * (game_state["step"]/s.MAX_STEPS)
         
         # escape from explosion reward
         escape_bomb_reward = 0
