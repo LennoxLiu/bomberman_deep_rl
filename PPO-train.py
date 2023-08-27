@@ -46,7 +46,7 @@ env = CustomEnv(options = option)
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": 0.0005,
+    "learning_rate": linear_schedule(0.0005),
     "n_steps": 512,
     "batch_size": 64,
     "stats_window_size":  400
