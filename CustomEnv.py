@@ -195,14 +195,29 @@ class CustomEnv(gym.Env):
 
                 # If last pos in bomb range and now not
                 if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30
-                    
+                    escape_bomb_reward += 30    
+
+            # meaningfull bomb reward
+            meaningfull_bomb_reward = 0
+            if ACTION_MAP[action] == "BOMB":
+                # if there's a agent in bomb range, reward ++
+                for agent in self.world.active_agents:
+                    if agent != self.PPO_agent and \
+                        in_bomb_range(x,y,agent.x,agent.y): 
+                        meaningfull_bomb_reward += 50
+                
+                field = game_state["field"]
+                for x_temp in range(field.shape[0]):
+                    for y_temp in range(field.shape[1]):
+                        if field[x_temp,y_temp] == 1 and \
+                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                            meaningfull_bomb_reward += 20
 
         self.trajectory.append(current_pos)
 
         # Get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment
+        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
@@ -232,8 +247,6 @@ class CustomEnv(gym.Env):
                 case e.SURVIVED_ROUND:
                     reward += 500
 
-
-        # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
