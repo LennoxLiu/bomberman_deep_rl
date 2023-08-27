@@ -8,7 +8,6 @@ import events as e
 import agents
 
 import main
-from fallbacks import pygame, LOADED_PYGAME
 import math
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
@@ -102,10 +101,6 @@ class CustomEnv(gym.Env):
         #                  make_video=args.make_video, update_interval=args.update_interval)
         
         # my world controller
-        if self.make_video and not self.gui.screenshot_dir.exists():
-            self.gui.screenshot_dir.mkdir()
-
-        self.gui_timekeeper = main.Timekeeper(update_interval)
         self.world.user_input = None
 
         # store my agent
@@ -119,22 +114,12 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
 
-    def my_render(self, wait_until_due):
-        # If every step should be displayed, wait until it is due to be shown
-        if wait_until_due:
-            self.gui_timekeeper.wait()
-
-        if self.gui_timekeeper.is_due():
-            self.gui_timekeeper.note()
-            # Render (which takes time)
-            self.gui.render()
-            pygame.display.flip()
-
     def manhattan_distance(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
         distance = abs(x2 - x1) + abs(y2 - y1)
         return distance
+
 
     def step(self, action):
         self.world.do_step(ACTION_MAP[action])
@@ -281,16 +266,9 @@ class CustomEnv(gym.Env):
     
 
     def render(self):
-        if self.gui is not None:
-            self.my_render(self.every_step)
-
+        pass
 
     def close(self):
-        if self.make_video:
-            self.gui.make_video()
-        
-        # Can render end screen until next round is queried
-        
         self.world.end()
 
 
