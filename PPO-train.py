@@ -17,8 +17,8 @@ for turn in tqdm(range(20000)):
         if model != None:
             model.save("./Original/agent_code/PPO_agent/ppo_bomberman")
         del model
-        # model = PPO("MultiInputPolicy", env, verbose=1)
-        model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
+        model = PPO("MultiInputPolicy", env, verbose=1)
+        # model = PPO.load("./Original/agent_code/PPO_agent/ppo_bomberman", env)
     
     model.learn(total_timesteps=400)
     if turn % 5 == 0 and turn % 100 != 0:

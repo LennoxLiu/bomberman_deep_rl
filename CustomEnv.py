@@ -162,6 +162,8 @@ class CustomEnv(gym.Env):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
         
+        
+        meaningfull_bomb_reward = 0
         if len(self.trajectory) > 0:
             x, y = self.trajectory[-1] # last position
             x_now, y_now =current_pos
@@ -198,7 +200,6 @@ class CustomEnv(gym.Env):
                     escape_bomb_reward += 30    
 
             # meaningfull bomb reward
-            meaningfull_bomb_reward = 0
             if ACTION_MAP[action] == "BOMB":
                 # if there's a agent in bomb range, reward ++
                 for agent in self.world.active_agents:
