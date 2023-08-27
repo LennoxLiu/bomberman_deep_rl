@@ -177,6 +177,8 @@ class CustomEnv(gym.Env):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
         
+        
+        meaningfull_bomb_reward = 0
         if len(self.trajectory) > 0:
             x, y = self.trajectory[-1] # last position
             x_now, y_now =current_pos
@@ -187,20 +189,22 @@ class CustomEnv(gym.Env):
                     if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
                         ((yb < y) and ACTION_MAP[action] == 'DOWN'):
                         escape_bomb_reward += 20
-                    # Go towards bomb
+                    # Go towards bomb or wait
                     if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP'):
-                        escape_bomb_reward -= 10
+                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
+                        escape_bomb_reward -= 20
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
                     if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
                         ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
                         escape_bomb_reward += 20
-                    # Go towards bomb
+                    # Go towards bomb or wait
                     if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT'):
-                        escape_bomb_reward -= 10
-                    
+                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
+                        (ACTION_MAP[action] ==  'WAIT'):
+                        escape_bomb_reward -= 20
+
                 # Try random direction if directly on top of a bomb
                 if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
                     and ACTION_MAP[action] != "BOMB":
@@ -208,14 +212,28 @@ class CustomEnv(gym.Env):
 
                 # If last pos in bomb range and now not
                 if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30
-                    
+                    escape_bomb_reward += 30    
+
+            # meaningfull bomb reward
+            if ACTION_MAP[action] == "BOMB":
+                # if there's a agent in bomb range, reward ++
+                for agent in self.world.active_agents:
+                    if agent != self.PPO_agent and \
+                        in_bomb_range(x,y,agent.x,agent.y): 
+                        meaningfull_bomb_reward += 50
+                
+                field = game_state["field"]
+                for x_temp in range(field.shape[0]):
+                    for y_temp in range(field.shape[1]):
+                        if field[x_temp,y_temp] == 1 and \
+                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                            meaningfull_bomb_reward += 20
 
         self.trajectory.append(current_pos)
 
         # Get reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment
+        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
@@ -229,7 +247,7 @@ class CustomEnv(gym.Env):
                 case e.BOMB_EXPLODED:
                     reward += 3
                 case e.CRATE_DESTROYED:
-                    reward += 20
+                    reward += 50
                 case e.COIN_FOUND:
                     reward += 50
                 case e.COIN_COLLECTED:
@@ -237,16 +255,14 @@ class CustomEnv(gym.Env):
                 case e.KILLED_OPPONENT:
                     reward += 5000
                 case e.KILLED_SELF:
-                    reward -= 100
+                    reward += 300 # decrease the got killed punishment when exploring
                 case e.GOT_KILLED:
-                    reward -= 200
+                    reward -= 500
                 case e.OPPONENT_ELIMINATED:
                     reward -= 10
                 case e.SURVIVED_ROUND:
                     reward += 500
 
-
-        # the reward in gym is the smaller the better
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
