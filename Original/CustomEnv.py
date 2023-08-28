@@ -57,6 +57,23 @@ def fromStateToObservation(game_state):
         return observation
 
 
+def in_bomb_range(field,bomb_x,bomb_y,x,y):
+            is_in_bomb_range_x = False
+            is_in_bomb_range_y = False
+            if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
+                is_in_bomb_range_x = True
+                for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
+                    if field[x,y_temp] == -1:
+                        is_in_bomb_range_x = False
+            
+            if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
+                is_in_bomb_range_y = True
+                for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
+                    if field[x_temp,y] == -1:
+                        is_in_bomb_range_y = False
+            return is_in_bomb_range_x or is_in_bomb_range_y
+
+
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
@@ -88,11 +105,6 @@ class CustomEnv(gym.Env):
         #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
         #                  make_video=args.make_video, update_interval=args.update_interval)
         
-        # my world controller
-        if self.make_video and not self.gui.screenshot_dir.exists():
-            self.gui.screenshot_dir.mkdir()
-
-        self.gui_timekeeper = main.Timekeeper(update_interval)
         self.world.user_input = None
 
         # store my agent
@@ -106,17 +118,6 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
 
-    def my_render(self, wait_until_due):
-        # If every step should be displayed, wait until it is due to be shown
-        if wait_until_due:
-            self.gui_timekeeper.wait()
-
-        if self.gui_timekeeper.is_due():
-            self.gui_timekeeper.note()
-            # Render (which takes time)
-            self.gui.render()
-            pygame.display.flip()
-
     def manhattan_distance(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
@@ -129,6 +130,7 @@ class CustomEnv(gym.Env):
 
         terminated = False
         truncated = False
+        last_action =  self.PPO_agent.last_action
 
         # get observation
         game_state = self.world.get_state_for_agent(self.PPO_agent)
@@ -144,112 +146,130 @@ class CustomEnv(gym.Env):
             if self.world.step == s.MAX_STEPS:
                 terminated = True
             
-        a = math.log(5)/2#math.log(2)
-        b = 5**2 #2**2
+        a = math.log(2)
+        b = 5**2
         # calculate non-explore punishment
         non_explore_punishment = 0
         current_pos = game_state["self"][3]
-        for i in range(len(self.trajectory)):
-            pos = self.trajectory[-i]
-            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+        for i in range(1, len(self.trajectory)):
+            pos = self.trajectory[-i] 
+            non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
         # new visit reward
         new_visit_reward = 0
         if current_pos not in self.trajectory:
-            new_visit_reward = 10
+            new_visit_reward = 20 + 100 * (game_state["step"]/s.MAX_STEPS)
         
         # escape from explosion reward
         escape_bomb_reward = 0
-        def in_bomb_range(bomb_x,bomb_y,x,y):
-            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
-                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
-        
-        
-        meaningfull_bomb_reward = 0
+        field = game_state["field"]
         if len(self.trajectory) > 0:
             x, y = self.trajectory[-1] # last position
-            x_now, y_now =current_pos
+            x_now, y_now = current_pos
             # Add proposal to run away from any nearby bomb about to blow
             for (xb, yb), t in game_state['bombs']:
                 if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
                     # Run away
-                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
-                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
-                        escape_bomb_reward += 20
+                    if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
+                        ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
-                    if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+                    if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
+                        ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
+                        (last_action ==  'WAIT'):
+                        escape_bomb_reward -= 100
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
-                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
-                        escape_bomb_reward += 20
+                    if ((xb > x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                        ((xb < x) and last_action == 'RIGHT' and field[x+1,y] == 0):
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
-                    if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+                    if ((xb > x) and last_action == 'RIGHT' and field[x+1,y] == 0) or \
+                        ((xb < x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                        (last_action ==  'WAIT'):
+                        escape_bomb_reward -= 100
 
                 # Try random direction if directly on top of a bomb
-                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
-                    and ACTION_MAP[action] != "BOMB":
-                    escape_bomb_reward += 10
+                if xb == x and yb == y:
+                    if (last_action == "UP" and field[x,y+1] == 0) or \
+                        (last_action == "DOWN" and field[x,y-1] == 0) or \
+                        (last_action == "LEFT" and field[x-1,y] == 0) or \
+                        (last_action == "RIGHT" and field[x+1,y] == 0)    :
+                        escape_bomb_reward += 100
 
                 # If last pos in bomb range and now not
-                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30    
+                if in_bomb_range(field,xb,yb,x,y) and not in_bomb_range(field,xb,yb,x_now,y_now):
+                    escape_bomb_reward += 200
 
-            # meaningfull bomb reward
-            if ACTION_MAP[action] == "BOMB":
-                # if there's a agent in bomb range, reward ++
-                for agent in self.world.active_agents:
-                    if agent != self.PPO_agent and \
-                        in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 50
-                
-                field = game_state["field"]
-                for x_temp in range(field.shape[0]):
-                    for y_temp in range(field.shape[1]):
-                        if field[x_temp,y_temp] == 1 and \
-                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 20
+                # if last pos not in bomb range and now yes
+                if in_bomb_range(field,xb,yb,x_now,y_now) and not in_bomb_range(field,xb,yb,x,y):
+                    escape_bomb_reward -= 200    
 
-        self.trajectory.append(current_pos)
+        # meaning full bomb position reward
+        meaningfull_bomb_reward = 0
+        x, y = current_pos
+        if last_action == "BOMB":
+            # if there's a agent in bomb range, reward ++
+            for agent in self.world.active_agents:
+                if agent != self.PPO_agent and \
+                    in_bomb_range(x,y,agent.x,agent.y): 
+                    meaningfull_bomb_reward += 300
+            
+            for x_temp in range(field.shape[0]):
+                for y_temp in range(field.shape[1]):
+                    if field[x_temp,y_temp] == 1 and \
+                        in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                        meaningfull_bomb_reward += 150
 
-        # Get reward
+        # Get game event reward
         # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
+        game_event_reward = 0
         for event in self.PPO_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
+                    game_event_reward += 5
                 case e.WAITED:
-                    reward += 1
+                    game_event_reward += 1
                 case e.INVALID_ACTION:
-                    reward -= 15
+                    game_event_reward -= 50
                 case e.BOMB_DROPPED:
-                    reward += 3
+                    game_event_reward += 50
                 case e.BOMB_EXPLODED:
-                    reward += 3
+                    game_event_reward += 0
                 case e.CRATE_DESTROYED:
-                    reward += 50
+                    game_event_reward += 100
                 case e.COIN_FOUND:
-                    reward += 50
+                    game_event_reward += 100
                 case e.COIN_COLLECTED:
-                    reward += 1000
+                    game_event_reward += 1000
                 case e.KILLED_OPPONENT:
-                    reward += 5000
+                    game_event_reward += 5000
                 case e.KILLED_SELF:
-                    reward += 300 # decrease the got killed punishment when exploring
+                    game_event_reward -= 200 * (1- game_state["step"]/s.MAX_STEPS) + 50# decrease the got killed punishment when exploring
                 case e.GOT_KILLED:
-                    reward -= 500
+                    game_event_reward -= 300 * (1- game_state["step"]/s.MAX_STEPS) + 50
                 case e.OPPONENT_ELIMINATED:
-                    reward -= 10
+                    game_event_reward -= 10
                 case e.SURVIVED_ROUND:
-                    reward += 500
+                    game_event_reward += 500
 
+        survive_reward = 0.125* game_state["step"] # considering invad operation punishment = 50
+        
+        # to prevent agent to back and forward
+        back_forward_punishment = 0
+        if len(self.trajectory) > 2:
+            last_pos = self.trajectory[-1]
+            for pos in reversed(self.trajectory):
+                if pos != last_pos:
+                    break
+            if pos == current_pos:
+                back_forward_punishment -= 100
+
+        reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
+        
+        # maintain self.trajectory
+        self.trajectory.append(current_pos)
+        
         return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
 
 
@@ -268,16 +288,10 @@ class CustomEnv(gym.Env):
     
 
     def render(self):
-        if self.gui is not None:
-            self.my_render(self.every_step)
+        pass
 
 
     def close(self):
-        if self.make_video:
-            self.gui.make_video()
-        
-        # Can render end screen until next round is queried
-        
         self.world.end()
 
 

@@ -7,7 +7,7 @@ from tqdm import tqdm
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
                                             # "coin_collector_agent", \
-                                            "--scenario","coin-heaven"]}
+                                            "--scenario","loot-crate-5"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 def linear_schedule(initial_value: float):
