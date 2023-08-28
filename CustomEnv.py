@@ -151,7 +151,8 @@ class CustomEnv(gym.Env):
         # calculate non-explore punishment
         non_explore_punishment = 0
         current_pos = game_state["self"][3]
-        for pos in self.trajectory: # only calculate the recent 5 pos
+        for i in range(1, len(self.trajectory)):
+            pos = self.trajectory[-i] 
             non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
         # new visit reward
