@@ -47,12 +47,12 @@ env = CustomEnv(options = option)
 
 new_parameters = {
     "learning_rate": linear_schedule(0.0005),
-    "n_steps": 2048,
+    "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  400
     }
 model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn(total_timesteps=20480, progress_bar=True, log_interval = 5)
+    model.learn(total_timesteps=20480, progress_bar=True, log_interval = 2)
     # total_timesteps=20480
     model.save(model_path)
