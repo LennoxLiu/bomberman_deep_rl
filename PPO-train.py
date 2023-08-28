@@ -4,10 +4,11 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from CustomEnv import CustomEnv
 from tqdm import tqdm
+import torch as th
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            # "coin_collector_agent", \
-                                            "--scenario","loot-crate-5"]}
+                                            "rule_based_agent", \
+                                            "--scenario","loot-crate-4"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 def linear_schedule(initial_value: float):
@@ -46,10 +47,10 @@ env = CustomEnv(options = option)
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": linear_schedule(0.0005),
+    "learning_rate": linear_schedule(0.001),
     "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "stats_window_size":  400
+    "stats_window_size":  400,
     }
 model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
