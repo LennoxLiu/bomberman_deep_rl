@@ -108,11 +108,11 @@ class CustomEnv(gym.Env):
         self.world.user_input = None
 
         # store my agent
-        self.PPO_agent = None
+        self.deep_agent = None
         for a in self.world.agents:
             if a.name == "user_agent":
-                self.PPO_agent = a
-        assert isinstance(self.PPO_agent, agents.Agent)
+                self.deep_agent = a
+        assert isinstance(self.deep_agent, agents.Agent)
 
         # start a new round
         self.world.new_round()
@@ -130,14 +130,14 @@ class CustomEnv(gym.Env):
 
         terminated = False
         truncated = False
-        last_action =  self.PPO_agent.last_action
+        last_action =  self.deep_agent.last_action
 
         # get observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        game_state = self.world.get_state_for_agent(self.deep_agent)
         if game_state == None: # the agent is dead
             truncated = True
-            observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            game_state = self.PPO_agent.last_game_state
+            observation = fromStateToObservation(self.deep_agent.last_game_state)
+            game_state = self.deep_agent.last_game_state
         else:
             observation = fromStateToObservation(game_state)
 
@@ -211,7 +211,7 @@ class CustomEnv(gym.Env):
         if last_action == "BOMB":
             # if there's a agent in bomb range, reward ++
             for agent in self.world.active_agents:
-                if agent != self.PPO_agent and \
+                if agent != self.deep_agent and \
                     in_bomb_range(field,x,y,agent.x,agent.y): 
                     meaningfull_bomb_reward += 300
             
@@ -222,9 +222,9 @@ class CustomEnv(gym.Env):
                         meaningfull_bomb_reward += 150
 
         # Get game event reward
-        # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
+        # self.deep_agent.last_game_state, self.deep_agent.last_action, game_state, self.events
         game_event_reward = 0
-        for event in self.PPO_agent.events:
+        for event in self.deep_agent.events:
             match(event):
                 case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                     game_event_reward += 5
@@ -270,7 +270,7 @@ class CustomEnv(gym.Env):
         # maintain self.trajectory
         self.trajectory.append(current_pos)
         
-        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
+        return observation, reward, terminated, truncated, {"events" : self.deep_agent.events}
 
 
     def reset(self, seed = None):
@@ -281,7 +281,7 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
         # Get first observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        game_state = self.world.get_state_for_agent(self.deep_agent)
         observation = fromStateToObservation(game_state)
 
         return observation, {"info": "reset"}
