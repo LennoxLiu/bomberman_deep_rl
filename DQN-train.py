@@ -30,7 +30,7 @@ def linear_schedule(initial_value: float):
     return func
 
 env = CustomEnv(options = option)
-model = DQN("MlpPolicy", env, verbose=1,learning_starts=0, learning_rate = 0.0005,target_update_interval = 1000, stats_window_size= 400)
+# model = DQN("MlpPolicy", env, verbose=1,learning_starts=0, learning_rate = 0.0005,target_update_interval = 1000, stats_window_size= 400)
 # (policy: str | type[DQNPolicy], env: GymEnv | str,
 #  learning_rate: float | Schedule = 0.0001,
 #  buffer_size: int = 1000000, learning_starts: int = 50000,
@@ -54,8 +54,8 @@ new_parameters = {
     "exploration_final_eps":0.05,
     "stats_window_size": 400
     }
-# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn( total_timesteps=61440, progress_bar=True, log_interval = 100)
-    # total_timesteps=20480
+    # total_timesteps=61440
     model.save(model_path)
