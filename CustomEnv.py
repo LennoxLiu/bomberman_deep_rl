@@ -212,13 +212,13 @@ class CustomEnv(gym.Env):
             # if there's a agent in bomb range, reward ++
             for agent in self.world.active_agents:
                 if agent != self.PPO_agent and \
-                    in_bomb_range(x,y,agent.x,agent.y): 
+                    in_bomb_range(field,x,y,agent.x,agent.y): 
                     meaningfull_bomb_reward += 300
             
             for x_temp in range(field.shape[0]):
                 for y_temp in range(field.shape[1]):
                     if field[x_temp,y_temp] == 1 and \
-                        in_bomb_range(x,y,x_temp,y_temp): # it's a crate
+                        in_bomb_range(field,x,y,x_temp,y_temp): # it's a crate
                         meaningfull_bomb_reward += 150
 
         # Get game event reward
