@@ -153,7 +153,7 @@ class CustomEnv(gym.Env):
         current_pos = game_state["self"][3]
         for i in range(len(self.trajectory)): # only calculate the recent 5 pos
             pos = self.trajectory[-i]
-            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+            non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
         # new visit reward
         new_visit_reward = 0
@@ -254,7 +254,14 @@ class CustomEnv(gym.Env):
                     game_event_reward += 500
 
         survive_reward = 0.125* game_state["step"] # considering invad operation punishment = 50
-        reward = survive_reward + game_event_reward + new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
+        
+        # to prevent agent to back and forward
+        meaningless_action_punishment = 0
+        if len(self.trajectory) > 2:
+            if current_pos == self.trajectory[-2]:
+                meaningless_action_punishment -= 100
+
+        reward = meaningless_action_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
         
         # maintain self.trajectory
         self.trajectory.append(current_pos)

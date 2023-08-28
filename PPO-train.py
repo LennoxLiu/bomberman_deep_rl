@@ -47,7 +47,7 @@ env = CustomEnv(options = option)
 
 new_parameters = {
     "learning_rate": linear_schedule(0.0005),
-    "n_steps": 512,
+    "n_steps": 2048,
     "batch_size": 64,
     "stats_window_size":  400
     }
