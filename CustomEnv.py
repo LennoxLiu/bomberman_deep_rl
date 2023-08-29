@@ -147,7 +147,7 @@ class CustomEnv(gym.Env):
                 terminated = True
             
         a = math.log(2)
-        b = 5**2
+        b = 2**2
         # calculate non-explore punishment
         non_explore_punishment = 0
         current_pos = game_state["self"][3]
@@ -158,7 +158,7 @@ class CustomEnv(gym.Env):
         # new visit reward
         new_visit_reward = 0
         if current_pos not in self.trajectory:
-            new_visit_reward = 20 + 100 * (game_state["step"]/s.MAX_STEPS)
+            new_visit_reward = 50
         
         # escape from explosion reward
         escape_bomb_reward = 0
@@ -172,22 +172,22 @@ class CustomEnv(gym.Env):
                     # Run away
                     if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
                         ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
-                        escape_bomb_reward += 100
+                        escape_bomb_reward += 50
                     # Go towards bomb or wait
                     if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
                         ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
                         (last_action ==  'WAIT'):
-                        escape_bomb_reward -= 100
+                        escape_bomb_reward -= 50
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
                     if ((xb > x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
                         ((xb < x) and last_action == 'RIGHT' and field[x+1,y] == 0):
-                        escape_bomb_reward += 100
+                        escape_bomb_reward += 50
                     # Go towards bomb or wait
                     if ((xb > x) and last_action == 'RIGHT' and field[x+1,y] == 0) or \
                         ((xb < x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
                         (last_action ==  'WAIT'):
-                        escape_bomb_reward -= 100
+                        escape_bomb_reward -= 50
 
                 # Try random direction if directly on top of a bomb
                 if xb == x and yb == y:
@@ -195,7 +195,7 @@ class CustomEnv(gym.Env):
                         (last_action == "DOWN" and field[x,y-1] == 0) or \
                         (last_action == "LEFT" and field[x-1,y] == 0) or \
                         (last_action == "RIGHT" and field[x+1,y] == 0)    :
-                        escape_bomb_reward += 100
+                        escape_bomb_reward += 50
 
                 # If last pos in bomb range and now not
                 if in_bomb_range(field,xb,yb,x,y) and not in_bomb_range(field,xb,yb,x_now,y_now):
@@ -203,7 +203,7 @@ class CustomEnv(gym.Env):
 
                 # if last pos not in bomb range and now yes
                 if in_bomb_range(field,xb,yb,x_now,y_now) and not in_bomb_range(field,xb,yb,x,y):
-                    escape_bomb_reward -= 200    
+                    escape_bomb_reward -= 100    
 
         # meaning full bomb position reward
         meaningfull_bomb_reward = 0
@@ -213,7 +213,7 @@ class CustomEnv(gym.Env):
             for agent in self.world.active_agents:
                 if agent != self.deep_agent and \
                     in_bomb_range(field,x,y,agent.x,agent.y): 
-                    meaningfull_bomb_reward += 300
+                    meaningfull_bomb_reward += 100
             
             for x_temp in range(field.shape[0]):
                 for y_temp in range(field.shape[1]):
@@ -245,15 +245,15 @@ class CustomEnv(gym.Env):
                 case e.KILLED_OPPONENT:
                     game_event_reward += 5000
                 case e.KILLED_SELF:
-                    game_event_reward -= 200 * (1- game_state["step"]/s.MAX_STEPS) + 50# decrease the got killed punishment when exploring
+                    game_event_reward -= 100
                 case e.GOT_KILLED:
-                    game_event_reward -= 300 * (1- game_state["step"]/s.MAX_STEPS) + 50
+                    game_event_reward -= 100
                 case e.OPPONENT_ELIMINATED:
                     game_event_reward -= 10
                 case e.SURVIVED_ROUND:
                     game_event_reward += 500
 
-        survive_reward = 0.125* game_state["step"] # considering invad operation punishment = 50
+        survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
         
         # to prevent agent to back and forward
         back_forward_punishment = 0
@@ -266,28 +266,28 @@ class CustomEnv(gym.Env):
                 else:
                     wait_time += 1
             if pos == current_pos:
-                back_forward_punishment -= 100
-            non_explore_punishment -= wait_time * 10
+                back_forward_punishment -= 50
+            # non_explore_punishment -= wait_time * 10
 
         reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
         
         # maintain self.trajectory
         self.trajectory.append(current_pos)
         
-        return observation, reward, terminated, truncated, {"events" : self.deep_agent.events}
+        return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 
 
     def reset(self, seed = None):
         super().reset(seed=seed) # following documentation
         
         self.trajectory = []
+
         # start a new round
         self.world.new_round()
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.deep_agent)
         observation = fromStateToObservation(game_state)
-
         return observation, {"info": "reset"}
     
 
