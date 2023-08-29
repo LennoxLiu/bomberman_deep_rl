@@ -6,10 +6,6 @@ from CustomEnv import CustomEnv
 from tqdm import tqdm
 import torch as th
 
-option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "rule_based_agent", \
-                                            "--scenario","loot-crate-4"]}
-model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 def linear_schedule(initial_value: float):
     """
@@ -30,8 +26,13 @@ def linear_schedule(initial_value: float):
 
     return func
 
+option={"argv": ["play","--no-gui","--agents","user_agent",\
+                                            "rule_based_agent", \
+                                            "--scenario","loot-crate-4"]}
+model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
+
 env = CustomEnv(options = option)
-# model = PPO("MlpPolicy", env, verbose=1, learning_rate = 0.0005, n_steps = 512, batch_size = 64, stats_window_size = 400)
+# model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.0005), n_steps = 2048, batch_size = 64, stats_window_size = 400)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -47,7 +48,7 @@ env = CustomEnv(options = option)
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": linear_schedule(0.001),
+    "learning_rate": linear_schedule(0.0005),
     "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  400,
