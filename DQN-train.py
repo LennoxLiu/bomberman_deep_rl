@@ -59,11 +59,11 @@ new_parameters = {
     "target_update_interval": 500, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "exploration_fraction": 0.999,
-    "exploration_initial_eps": 0.9,
+    "exploration_initial_eps": 0.8,
     "exploration_final_eps":0.1,
     "stats_window_size": 400
     }
-# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn( total_timesteps=20000, progress_bar=True, log_interval = 100)
     # total_timesteps=61440

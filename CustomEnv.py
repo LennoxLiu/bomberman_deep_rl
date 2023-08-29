@@ -231,7 +231,7 @@ class CustomEnv(gym.Env):
                 case e.WAITED:
                     game_event_reward += 1
                 case e.INVALID_ACTION:
-                    game_event_reward -= 20
+                    game_event_reward -= 50
                 case e.BOMB_DROPPED:
                     game_event_reward += 50
                 case e.BOMB_EXPLODED:
@@ -267,7 +267,7 @@ class CustomEnv(gym.Env):
                     wait_time += 1
             if pos == current_pos:
                 back_forward_punishment -= 100
-            non_explore_punishment -= wait_time * 20
+            non_explore_punishment -= wait_time * 10
 
         reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
         
