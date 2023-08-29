@@ -27,12 +27,12 @@ def linear_schedule(initial_value: float):
     return func
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "peaceful_agent", \
+                                            "coin_collector_agent","peaceful_agent","peaceful_agent", \
                                             "--scenario","loot-crate-5"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)
-model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.0005), n_steps = 2048, batch_size = 64, stats_window_size = 400)
+# model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.0005), n_steps = 2048, batch_size = 64, stats_window_size = 400)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,

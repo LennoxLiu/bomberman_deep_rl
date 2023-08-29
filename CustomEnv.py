@@ -172,22 +172,22 @@ class CustomEnv(gym.Env):
                     # Run away
                     if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
                         ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
-                        escape_bomb_reward += 50
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
                     if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
                         ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
                         (last_action ==  'WAIT'):
-                        escape_bomb_reward -= 50
+                        escape_bomb_reward -= 100
                 if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
                     # Run away
                     if ((xb > x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
                         ((xb < x) and last_action == 'RIGHT' and field[x+1,y] == 0):
-                        escape_bomb_reward += 50
+                        escape_bomb_reward += 100
                     # Go towards bomb or wait
                     if ((xb > x) and last_action == 'RIGHT' and field[x+1,y] == 0) or \
                         ((xb < x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
                         (last_action ==  'WAIT'):
-                        escape_bomb_reward -= 50
+                        escape_bomb_reward -= 100
 
                 # Try random direction if directly on top of a bomb
                 if xb == x and yb == y:
@@ -247,7 +247,7 @@ class CustomEnv(gym.Env):
                 case e.KILLED_SELF:
                     game_event_reward -= 100
                 case e.GOT_KILLED:
-                    game_event_reward -= 100
+                    game_event_reward -= 300
                 case e.OPPONENT_ELIMINATED:
                     game_event_reward -= 10
                 case e.SURVIVED_ROUND:
