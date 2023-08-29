@@ -5,10 +5,6 @@ from stable_baselines3.common.env_util import make_vec_env
 from CustomEnv import CustomEnv
 from tqdm import tqdm
 
-option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            # "coin_collector_agent", \
-                                            "--scenario","coin-heaven"]}
-model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
 
 def linear_schedule(initial_value: float):
     """
@@ -29,8 +25,17 @@ def linear_schedule(initial_value: float):
 
     return func
 
+option={"argv": ["play","--no-gui","--agents","user_agent",\
+                                            "rule_based_agent", \
+                                            "--scenario","loot-crate-5"]}
+model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
+
 env = CustomEnv(options = option)
-# model = DQN("MlpPolicy", env, verbose=1,learning_starts=0, learning_rate = 0.0005,target_update_interval = 1000, stats_window_size= 400)
+model = DQN("MlpPolicy", env, verbose=1,learning_starts=0,
+             learning_rate = 0.0001, target_update_interval= 5000,
+             exploration_fraction=0.99, exploration_initial_eps = 0.8,
+             exploration_final_eps = 0.15, stats_window_size= 400
+            )
 # (policy: str | type[DQNPolicy], env: GymEnv | str,
 #  learning_rate: float | Schedule = 0.0001,
 #  buffer_size: int = 1000000, learning_starts: int = 50000,
@@ -46,16 +51,16 @@ env = CustomEnv(options = option)
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": linear_schedule(0.0005),
-    "target_update_interval": 1000, # more n_steps means more robust, less tuned
+    "learning_rate": 0.0001,
+    "target_update_interval": 500, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "exploration_fraction": 0.1,
-    "exploration_initial_eps": 1,
-    "exploration_final_eps":0.05,
+    "exploration_fraction": 0.99,
+    "exploration_initial_eps": 0.5,
+    "exploration_final_eps":0.1,
     "stats_window_size": 400
     }
-model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn( total_timesteps=61440, progress_bar=True, log_interval = 100)
+    model.learn( total_timesteps=20000, progress_bar=True, log_interval = 100)
     # total_timesteps=61440
     model.save(model_path)
