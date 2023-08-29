@@ -27,12 +27,12 @@ def linear_schedule(initial_value: float):
     return func
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "coin_collector_agent","rule_based_agent","peaceful_agent", \
-                                            "--scenario","classic"]}
+                                            "coin_collector_agent","peaceful_agent","peaceful_agent", \
+                                            "--scenario","loot-crate-6"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)
-model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.0005), n_steps = 2048, batch_size = 64, stats_window_size = 400)
+# model = PPO("MlpPolicy", env, verbose=1, learning_rate = 0.0003, n_steps = 2048, batch_size = 64, stats_window_size = 400)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -48,14 +48,14 @@ model = PPO("MlpPolicy", env, verbose=1, learning_rate = linear_schedule(0.0005)
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": linear_schedule(0.0005),
+    "learning_rate": linear_schedule(0.0003),
     "n_steps": 512, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  400,
     "clip_range": 0.1,
     }
-# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn(total_timesteps=20480, progress_bar=True, log_interval = 2)
+    model.learn(total_timesteps=204800, progress_bar=True, log_interval = 2)
     # total_timesteps=20480
     model.save(model_path)
