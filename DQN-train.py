@@ -26,16 +26,12 @@ def linear_schedule(initial_value: float):
     return func
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "rule_based_agent", \
-                                            "--scenario","loot-crate-5"]}
+                                            # "rule_based_agent", \
+                                            "--scenario","coin-heaven"]}
 model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
 
 env = CustomEnv(options = option)
-model = DQN("MlpPolicy", env, verbose=1,learning_starts=0,
-             learning_rate = 0.0001, target_update_interval= 5000,
-             exploration_fraction=0.99, exploration_initial_eps = 0.8,
-             exploration_final_eps = 0.15, stats_window_size= 400
-            )
+
 # (policy: str | type[DQNPolicy], env: GymEnv | str,
 #  learning_rate: float | Schedule = 0.0001,
 #  buffer_size: int = 1000000, learning_starts: int = 50000,
@@ -49,13 +45,21 @@ model = DQN("MlpPolicy", env, verbose=1,learning_starts=0,
 #  stats_window_size: int = 100, tensorboard_log: str | None = None,
 #  policy_kwargs: Dict[str, Any] | None = None, verbose: int = 0, seed: int | None = None,
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
+model = DQN("MlpPolicy", env, verbose=1, learning_starts=0,
+            learning_rate = 0.0001,
+            target_update_interval= 500,
+            exploration_fraction=0.99,
+            exploration_initial_eps = 0.9,
+            exploration_final_eps = 0.1,
+            stats_window_size= 400
+            )
 
 new_parameters = {
     "learning_rate": 0.0001,
     "target_update_interval": 500, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "exploration_fraction": 0.99,
-    "exploration_initial_eps": 0.5,
+    "exploration_fraction": 0.999,
+    "exploration_initial_eps": 0.9,
     "exploration_final_eps":0.1,
     "stats_window_size": 400
     }
