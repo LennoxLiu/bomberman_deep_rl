@@ -239,7 +239,7 @@ class CustomEnv(gym.Env):
                 case e.CRATE_DESTROYED:
                     game_event_reward += 500
                 case e.COIN_FOUND:
-                    game_event_reward += 50
+                    game_event_reward += 100
                 case e.COIN_COLLECTED:
                     game_event_reward += 1000
                 case e.KILLED_OPPONENT:
