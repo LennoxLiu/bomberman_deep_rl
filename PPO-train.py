@@ -49,7 +49,7 @@ env = CustomEnv(options = option)
 
 new_parameters = {
     "learning_rate": 0.0003,
-    "n_steps": 512, # more n_steps means more robust, less tuned
+    "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  400,
     "clip_range": 0.1,
