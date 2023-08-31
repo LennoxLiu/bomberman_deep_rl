@@ -27,8 +27,8 @@ def linear_schedule(initial_value: float):
     return func
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "coin_collector_agent","peaceful_agent","peaceful_agent", \
-                                            "--scenario","loot-crate-6"]}
+                                            "rule_based_agent","rule_based_agent","coin_collector_agent", \
+                                            "--scenario","classic"]}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)

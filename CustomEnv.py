@@ -245,9 +245,9 @@ class CustomEnv(gym.Env):
                 case e.KILLED_OPPONENT:
                     game_event_reward += 5000
                 case e.KILLED_SELF:
-                    game_event_reward -= 1000
+                    game_event_reward -= 100
                 case e.GOT_KILLED:
-                    game_event_reward -= 3000
+                    game_event_reward -= 500
                 case e.OPPONENT_ELIMINATED:
                     game_event_reward -= 10
                 case e.SURVIVED_ROUND:
