@@ -78,7 +78,7 @@ env.metadata = option
 
 model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_starts=0,
             learning_rate = 0.0001,
-            target_update_interval= 500,
+            target_update_interval= 10000,
             exploration_fraction=0.1,
             exploration_initial_eps = 1,
             exploration_final_eps = 0.1,
@@ -89,15 +89,15 @@ model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_s
 new_parameters = {
     "policy_kwargs":policy_kwargs,
     "learning_rate": 0.0001,
-    "target_update_interval": 500, # more n_steps means more robust, less tuned
+    "target_update_interval": 10000, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "exploration_fraction": 0.999,
-    "exploration_initial_eps": 0.8,
+    "exploration_fraction": 0.99,
+    "exploration_initial_eps": 0.5,
     "exploration_final_eps":0.1,
     "stats_window_size": 100
     }
-# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = DQN.load(model_path, env = env, policy_kwargs=policy_kwargs, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn( total_timesteps=20000, progress_bar=True, log_interval = 100)
+    model.learn( total_timesteps=50000, progress_bar=True, log_interval = 100)
     # total_timesteps=61440
     model.save(model_path)

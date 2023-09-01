@@ -214,6 +214,10 @@ class CustomEnv(gym.Env):
             meaningfull_bomb_reward = 0
             x, y = current_pos
             if last_action == "BOMB":
+                # maintain bomb_history in rule_based_agent
+                # Keep track of chosen action for cycle detection
+                self.rule_based_agent.bomb_history.append((x, y))
+
                 # if there's a agent in bomb range, reward ++
                 for agent in self.world.active_agents:
                     if agent != self.deep_agent and \

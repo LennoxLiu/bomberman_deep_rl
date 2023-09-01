@@ -103,6 +103,11 @@ class RuleBasedAgent():
                 if (0 < i < bomb_map.shape[0]) and (0 < j < bomb_map.shape[1]):
                     bomb_map[i, j] = min(bomb_map[i, j], t)
 
+
+        # Keep track of chosen action for cycle detection
+        # if a == 'BOMB':
+        #     self.bomb_history.append((x, y))
+
         # If agent has been in the same location three times recently, it's a loop
         if self.coordinate_history.count((x, y)) > 2:
             self.ignore_others_timer = 5
@@ -196,8 +201,4 @@ class RuleBasedAgent():
         while len(action_ideas) > 0:
             a = action_ideas.pop()
             if a in valid_actions:
-                # Keep track of chosen action for cycle detection
-                if a == 'BOMB':
-                    self.bomb_history.append((x, y))
-
                 return a

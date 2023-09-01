@@ -67,7 +67,7 @@ policy_kwargs = dict(
     features_extractor_class=CustomCNN,
     features_extractor_kwargs=dict(features_dim=128),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[32, 32], vf=[32, 32])
+    net_arch=dict(pi=[64, 32], vf=[64, 32])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
@@ -103,8 +103,8 @@ new_parameters = {
     "stats_window_size":  400,
     "clip_range": 0.2,
     }
-# model = PPO.load(model_path, env = env, policy_kwargs=policy_kwargs, force_reset = True, custom_objects = new_parameters) 
+model = PPO.load(model_path, env = env, policy_kwargs=policy_kwargs, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn(total_timesteps=int(20480/6*5), progress_bar=True, log_interval = 2)
+    model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
     model.save(model_path)
