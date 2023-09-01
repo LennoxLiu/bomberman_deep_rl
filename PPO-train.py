@@ -32,7 +32,7 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 
 env = CustomEnv(options = option)
-model = PPO("MultiInputPolicy", env, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 400)
+model = PPO("MultiInputPolicy", env, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -51,7 +51,7 @@ new_parameters = {
     "learning_rate": 0.0003,
     "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "stats_window_size":  400,
+    "stats_window_size":  100,
     "clip_range": 0.1,
     }
 # model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 

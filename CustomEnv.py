@@ -35,12 +35,15 @@ def fromStateToObservation(game_state):
 
         # 0: nothing
         # 1: bomb
-        # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+        # 2: self
+        # 3-4: explosion still dangerous(as > 0 in explosion_map: 2,1)
         explosion_map = game_state["explosion_map"].astype(np.uint8)
-        explosion_map[explosion_map > 0] += 1
+        explosion_map[explosion_map > 0] += 2
+        observation["bomb_and_explosion"][game_state["self"][3]] = 2
         observation["bomb_and_explosion"] = explosion_map
         for bomb in game_state["bombs"]:
             observation["bomb_and_explosion"][bomb[0]] = 1
+        
         observation["bomb_and_explosion"] = observation["bomb_and_explosion"].flatten()
         assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
@@ -91,10 +94,11 @@ class CustomEnv(gym.Env):
                 # 4: other agent
                 # 5: self
                 
-                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),
+                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 3 + s.EXPLOSION_TIMER, dtype = np.uint8),
                 # 0: nothing
                 # 1: bomb
-                # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+                # 2: self
+                # 3-4: explosion still dangerous(as > 0 in explosion_map: 2,1)
 
                 "bomb_possible": Discrete(2)
             }
@@ -243,9 +247,9 @@ class CustomEnv(gym.Env):
                     case e.BOMB_EXPLODED:
                         game_event_reward += 0
                     case e.CRATE_DESTROYED:
-                        game_event_reward += 500
-                    case e.COIN_FOUND:
                         game_event_reward += 100
+                    case e.COIN_FOUND:
+                        game_event_reward += 200
                     case e.COIN_COLLECTED:
                         game_event_reward += 1000
                     case e.KILLED_OPPONENT:
