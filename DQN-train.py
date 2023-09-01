@@ -25,34 +25,69 @@ def linear_schedule(initial_value: float):
 
     return func
 
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+
+
+class CustomCNN(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        This corresponds to the number of unit for the last layer.
+    """
+
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
+        super().__init__(observation_space, features_dim)
+        # We assume CxHxW images (channels first)
+        # Re-ordering will be done by pre-preprocessing or wrapper
+        n_input_channels = 1
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        # Compute shape by doing one forward pass
+        with th.no_grad():
+            n_flatten = self.cnn(
+                th.as_tensor(observation_space.sample()[None]).float()
+            ).shape[1]
+
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        return self.linear(self.cnn(observations))
+
+policy_kwargs = dict(
+    features_extractor_class=CustomCNN,
+    features_extractor_kwargs=dict(features_dim=128),
+    activation_fn=th.nn.ReLU,
+    net_arch=dict(pi=[32, 32], vf=[32, 32])
+    # Custom actor (pi) and value function (vf) networks
+    # of two layers of size 32 each with Relu activation function
+    # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
+)
+
+
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            # "rule_based_agent", \
-                                            "--scenario","coin-heaven"]}
+                                            "rule_based_agent","rule_based_agent","rule_based_agent", \
+                                            "--scenario","classic"],
+        "enable_rule_based_agent_reward": True}
 model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
+env = CustomEnv()
+env.metadata = option
+# env = gym.wrappers.NormalizeReward(env)
 
-env = CustomEnv(options = option)
-
-# (policy: str | type[DQNPolicy], env: GymEnv | str,
-#  learning_rate: float | Schedule = 0.0001,
-#  buffer_size: int = 1000000, learning_starts: int = 50000,
-#  batch_size: int = 32, tau: float = 1, gamma: float = 0.99,
-#  train_freq: int | Tuple[int, str] = 4, gradient_steps: int = 1,
-#  replay_buffer_class: type[ReplayBuffer] | None = None,
-#  replay_buffer_kwargs: Dict[str, Any] | None = None,
-#  optimize_memory_usage: bool = False, target_update_interval: int = 10000,
-#  exploration_fraction: float = 0.1, exploration_initial_eps: float = 1,
-#  exploration_final_eps: float = 0.05, max_grad_norm: float = 10,
-#  stats_window_size: int = 100, tensorboard_log: str | None = None,
-#  policy_kwargs: Dict[str, Any] | None = None, verbose: int = 0, seed: int | None = None,
-#  device: device | str = "auto", _init_setup_model: bool = True) -> None
-model = DQN("MlpPolicy", env, verbose=1, learning_starts=0,
+model = DQN("CnnPolicy", env, verbose=1, learning_starts=0,
             learning_rate = 0.0001,
             target_update_interval= 500,
-            exploration_fraction=0.99,
-            exploration_initial_eps = 0.9,
+            exploration_fraction=0.1,
+            exploration_initial_eps = 1,
             exploration_final_eps = 0.1,
-            stats_window_size= 400
+            stats_window_size= 100
             )
+
 
 new_parameters = {
     "learning_rate": 0.0001,
@@ -61,9 +96,9 @@ new_parameters = {
     "exploration_fraction": 0.999,
     "exploration_initial_eps": 0.8,
     "exploration_final_eps":0.1,
-    "stats_window_size": 400
+    "stats_window_size": 100
     }
-model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn( total_timesteps=20000, progress_bar=True, log_interval = 100)
     # total_timesteps=61440
