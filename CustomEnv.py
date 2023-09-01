@@ -15,7 +15,6 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = {}
-        one_array = np.ones(s.COLS* s.ROWS)
 
         game_field = game_state["field"].astype(np.uint8) 
         # 1 for crates, −1 for stone walls and 0 for free tiles
@@ -31,8 +30,8 @@ def fromStateToObservation(game_state):
         for other in game_state["others"]:
             observation["field_and_targets"][other[3]] = 4
         observation["field_and_targets"][game_state["self"][3]] = 5
-        observation["field_and_targets"] = observation["field_and_targets"].flatten()
-        assert MultiDiscrete(nvec= one_array * 6, dtype = np.uint8).contains(observation["field_and_targets"])
+        observation["field_and_targets"] = observation["field_and_targets"]
+        assert Box(low = 0,high = 5.0,shape=(s.COLS, s.ROWS), dtype = np.uint8).contains(observation["field_and_targets"])
 
         # 0: nothing
         # 1: bomb
@@ -43,13 +42,13 @@ def fromStateToObservation(game_state):
         explosion_map[game_state["self"][3]] = 2
         for bomb in game_state["bombs"]:
             explosion_map[bomb[0]] = 1
-        observation["bomb_and_explosion"] = explosion_map.flatten()
-        assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
+        observation["bomb_and_explosion"] = explosion_map
+        assert Box(low = 0,high = 3 + s.EXPLOSION_TIMER,shape=(s.COLS, s.ROWS), dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
         observation["bomb_possible"] = int(game_state["self"][2])
         assert Discrete(2).contains(observation["bomb_possible"])
         
-        spaces.Dict({"field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
+        spaces.Dict({"field_and_targets": Box(low = 0,high = 5.0,shape=(s.COLS, s.ROWS), dtype = np.uint8),"bomb_and_explosion": Box(low = 0,high = 3 + s.EXPLOSION_TIMER,shape=(s.COLS, s.ROWS), dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
         return observation
 
 
@@ -83,17 +82,17 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        one_array = np.ones(s.COLS* s.ROWS)
+        one_array = np.ones((s.COLS, s.ROWS))
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
             {   
-                "field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),
+                "field_and_targets": Box(low = 0,high = 5.0,shape=(s.COLS, s.ROWS), dtype = np.uint8),
                 # 0: stone walls, 1: free tiles, 2: crates
                 # 3: coin
                 # 4: other agent
                 # 5: self
                 
-                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 3 + s.EXPLOSION_TIMER, dtype = np.uint8),
+                "bomb_and_explosion": Box(low = 0,high = 3 + s.EXPLOSION_TIMER,shape=(s.COLS, s.ROWS), dtype = np.uint8),
                 # 0: nothing
                 # 1: bomb
                 # 2: self
