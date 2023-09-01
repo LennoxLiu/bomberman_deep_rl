@@ -8,7 +8,6 @@ import events as e
 import agents
 
 import main
-from fallbacks import pygame, LOADED_PYGAME
 import math
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
@@ -17,45 +16,57 @@ def fromStateToObservation(game_state):
         observation = {}
         one_array = np.ones(s.COLS* s.ROWS)
 
-        # 0: ston walls, 1: free tiles
-        game_field = game_state["field"].astype(np.uint8)
-        observation["field"] = game_field.flatten()
-        observation["field"] += 1
-        observation["field"][observation["field"] == 2] = 0 # remove crates
-        assert MultiDiscrete(nvec= one_array * 3, dtype = np.uint8).contains(observation["field"])
+        game_field = game_state["field"].astype(np.uint8) 
+        # 1 for crates, −1 for stone walls and 0 for free tiles
 
-        # 0: nothing, 1: coin, 2: crates
-        # 3: other agent with bomb, 4: other agent without bomb
+        # 0: stone walls, 1: free tiles, 2: crates
+        # 3: coin
+        # 4: other agent
         # 5: self
-        observation["targets"] = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
+        observation["field_and_targets"] = game_field + 1
+
         for coin in game_state["coins"]:
-            observation["targets"][coin] = 1 # coin
-        observation["targets"][game_field == 1] = 2 # crates
+            observation["field_and_targets"][coin] = 3 # coin
         for other in game_state["others"]:
-            if other[2] == True: # has bomb
-                observation["targets"][other[3]] = 3 
-            else:
-                observation["targets"][other[3]] = 4
-        observation["targets"][game_state["self"][3]] = 5
-        observation["targets"] = observation["targets"].flatten()
-        assert MultiDiscrete(nvec= one_array * 6, dtype = np.uint8).contains(observation["targets"])
+            observation["field_and_targets"][other[3]] = 4
+        observation["field_and_targets"][game_state["self"][3]] = 5
+        observation["field_and_targets"] = observation["field_and_targets"].flatten()
+        assert MultiDiscrete(nvec= one_array * 6, dtype = np.uint8).contains(observation["field_and_targets"])
 
         # 0: nothing
         # 1: bomb
-        # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+        # 2: self
+        # 3-4: explosion still dangerous(as > 0 in explosion_map: 2,1)
         explosion_map = game_state["explosion_map"].astype(np.uint8)
-        explosion_map[explosion_map > 0] += 1
-        observation["bomb_and_explosion"] = explosion_map
+        explosion_map[explosion_map > 0] += 2
+        explosion_map[game_state["self"][3]] = 2
         for bomb in game_state["bombs"]:
-            observation["bomb_and_explosion"][bomb[0]] = 1
-        observation["bomb_and_explosion"] = observation["bomb_and_explosion"].flatten()
+            explosion_map[bomb[0]] = 1
+        observation["bomb_and_explosion"] = explosion_map.flatten()
         assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
         observation["bomb_possible"] = int(game_state["self"][2])
         assert Discrete(2).contains(observation["bomb_possible"])
         
-        spaces.Dict({"field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),"targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
+        spaces.Dict({"field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
         return observation
+
+
+def in_bomb_range(field,bomb_x,bomb_y,x,y):
+            is_in_bomb_range_x = False
+            is_in_bomb_range_y = False
+            if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
+                is_in_bomb_range_x = True
+                for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
+                    if field[x,y_temp] == -1:
+                        is_in_bomb_range_x = False
+            
+            if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
+                is_in_bomb_range_y = True
+                for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
+                    if field[x_temp,y] == -1:
+                        is_in_bomb_range_y = False
+            return is_in_bomb_range_x or is_in_bomb_range_y
 
 
 class CustomEnv(gym.Env):
@@ -74,19 +85,18 @@ class CustomEnv(gym.Env):
         one_array = np.ones(s.COLS* s.ROWS)
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
-            {
-                "field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),
-                # 0: ston walls, 1: free tiles
-                
-                "targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),
-                # 0: nothing, 1: coin, 2: crates
-                # 3: other agent with bomb, 4: other agent without bomb
+            {   
+                "field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),
+                # 0: stone walls, 1: free tiles, 2: crates
+                # 3: coin
+                # 4: other agent
                 # 5: self
                 
-                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),
+                "bomb_and_explosion": MultiDiscrete(nvec= one_array * 3 + s.EXPLOSION_TIMER, dtype = np.uint8),
                 # 0: nothing
                 # 1: bomb
-                # 2-3: explosion still dangerous(as > 0 in explosion_map: 2,1)
+                # 2: self
+                # 3-4: explosion still dangerous(as > 0 in explosion_map: 2,1)
 
                 "bomb_possible": Discrete(2)
             }
@@ -102,33 +112,18 @@ class CustomEnv(gym.Env):
         #                  make_video=args.make_video, update_interval=args.update_interval)
         
         # my world controller
-        if self.make_video and not self.gui.screenshot_dir.exists():
-            self.gui.screenshot_dir.mkdir()
-
-        self.gui_timekeeper = main.Timekeeper(update_interval)
         self.world.user_input = None
 
         # store my agent
-        self.PPO_agent = None
+        self.deep_agent = None
         for a in self.world.agents:
             if a.name == "user_agent":
-                self.PPO_agent = a
-        assert isinstance(self.PPO_agent, agents.Agent)
+                self.deep_agent = a
+        assert isinstance(self.deep_agent, agents.Agent)
 
         # start a new round
         self.world.new_round()
 
-
-    def my_render(self, wait_until_due):
-        # If every step should be displayed, wait until it is due to be shown
-        if wait_until_due:
-            self.gui_timekeeper.wait()
-
-        if self.gui_timekeeper.is_due():
-            self.gui_timekeeper.note()
-            # Render (which takes time)
-            self.gui.render()
-            pygame.display.flip()
 
     def manhattan_distance(self, point1, point2):
         x1, y1 = point1
@@ -136,111 +131,158 @@ class CustomEnv(gym.Env):
         distance = abs(x2 - x1) + abs(y2 - y1)
         return distance
 
+
     def step(self, action):
-        self.world.do_step(ACTION_MAP[action])
-        self.user_input = None
+            self.world.do_step(ACTION_MAP[action])
+            self.user_input = None
 
-        terminated = False
-        truncated = False
+            terminated = False
+            truncated = False
+            last_action =  self.deep_agent.last_action
 
-        # get observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
-        if game_state == None: # the agent is dead
-            truncated = True
-            observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            game_state = self.PPO_agent.last_game_state
-        else:
-            observation = fromStateToObservation(game_state)
+            # get observation
+            game_state = self.world.get_state_for_agent(self.deep_agent)
+            if game_state == None: # the agent is dead
+                truncated = True
+                observation = fromStateToObservation(self.deep_agent.last_game_state)
+                game_state = self.deep_agent.last_game_state
+            else:
+                observation = fromStateToObservation(game_state)
 
-                # terminated or trunctated
-        if self.world.running == False:
-            if self.world.step == s.MAX_STEPS:
-                terminated = True
+                    # terminated or trunctated
+            if self.world.running == False:
+                if self.world.step == s.MAX_STEPS:
+                    terminated = True
+                
+            a = math.log(2)
+            b = 2**2
+            # calculate non-explore punishment
+            non_explore_punishment = 0
+            current_pos = game_state["self"][3]
+            for i in range(1, len(self.trajectory)):
+                pos = self.trajectory[-i] 
+                non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+
+            # new visit reward
+            new_visit_reward = 0
+            if current_pos not in self.trajectory:
+                new_visit_reward = 50
             
-        a = math.log(5)/2#math.log(2)
-        b = 5**2 #2**2
-        # calculate non-explore punishment
-        non_explore_punishment = 0
-        current_pos = game_state["self"][3]
-        for i in range(len(self.trajectory)):
-            pos = self.trajectory[-i]
-            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+            # escape from explosion reward
+            escape_bomb_reward = 0
+            field = game_state["field"]
+            if len(self.trajectory) > 0:
+                x, y = self.trajectory[-1] # last position
+                x_now, y_now = current_pos
+                # Add proposal to run away from any nearby bomb about to blow
+                for (xb, yb), t in game_state['bombs']:
+                    if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
+                        # Run away
+                        if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
+                            ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
+                            escape_bomb_reward += 100
+                        # Go towards bomb or wait
+                        if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
+                            ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
+                            (last_action ==  'WAIT'):
+                            escape_bomb_reward -= 100
+                    if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
+                        # Run away
+                        if ((xb > x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                            ((xb < x) and last_action == 'RIGHT' and field[x+1,y] == 0):
+                            escape_bomb_reward += 100
+                        # Go towards bomb or wait
+                        if ((xb > x) and last_action == 'RIGHT' and field[x+1,y] == 0) or \
+                            ((xb < x) and last_action == 'LEFT' and field[x-1,y] == 0) or \
+                            (last_action ==  'WAIT'):
+                            escape_bomb_reward -= 100
 
-        # new visit reward
-        new_visit_reward = 0
-        if current_pos not in self.trajectory:
-            new_visit_reward = 10
-        
-        # escape from explosion reward
-        escape_bomb_reward = 0
-        def in_bomb_range(bomb_x,bomb_y,x,y):
-            return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
-                      ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
-        
-        if len(self.trajectory) > 0:
-            x, y = self.trajectory[-1] # last position
-            x_now, y_now =current_pos
-            # Add proposal to run away from any nearby bomb about to blow
-            for (xb, yb), t in game_state['bombs']:
-                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
-                    # Run away
-                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
-                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
-                        escape_bomb_reward += 20
+                    # Try random direction if directly on top of a bomb
+                    if xb == x and yb == y:
+                        if (last_action == "UP" and field[x,y+1] == 0) or \
+                            (last_action == "DOWN" and field[x,y-1] == 0) or \
+                            (last_action == "LEFT" and field[x-1,y] == 0) or \
+                            (last_action == "RIGHT" and field[x+1,y] == 0)    :
+                            escape_bomb_reward += 50
 
-                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
-                    # Run away
-                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
-                        escape_bomb_reward += 20
+                    # If last pos in bomb range and now not
+                    if in_bomb_range(field,xb,yb,x,y) and not in_bomb_range(field,xb,yb,x_now,y_now):
+                        escape_bomb_reward += 200
 
-                # Try random direction if directly on top of a bomb
-                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
-                    and ACTION_MAP[action] != "BOMB":
-                    escape_bomb_reward += 10
+                    # if last pos not in bomb range and now yes
+                    if in_bomb_range(field,xb,yb,x_now,y_now) and not in_bomb_range(field,xb,yb,x,y):
+                        escape_bomb_reward -= 100    
 
-                # If last pos in bomb range and now not
-                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30
-                    
+            # meaning full bomb position reward
+            meaningfull_bomb_reward = 0
+            x, y = current_pos
+            if last_action == "BOMB":
+                # if there's a agent in bomb range, reward ++
+                for agent in self.world.active_agents:
+                    if agent != self.deep_agent and \
+                        in_bomb_range(field,x,y,agent.x,agent.y): 
+                        meaningfull_bomb_reward += 100
+                
+                for x_temp in range(field.shape[0]):
+                    for y_temp in range(field.shape[1]):
+                        if field[x_temp,y_temp] == 1 and \
+                            in_bomb_range(field,x,y,x_temp,y_temp): # it's a crate
+                            meaningfull_bomb_reward += 50
 
-        self.trajectory.append(current_pos)
+            # Get game event reward
+            # self.deep_agent.last_game_state, self.deep_agent.last_action, game_state, self.events
+            game_event_reward = 0
+            for event in self.deep_agent.events:
+                match(event):
+                    case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
+                        game_event_reward += 5
+                    case e.WAITED:
+                        game_event_reward += 1
+                    case e.INVALID_ACTION:
+                        game_event_reward -= 50
+                    case e.BOMB_DROPPED:
+                        game_event_reward += 50
+                    case e.BOMB_EXPLODED:
+                        game_event_reward += 0
+                    case e.CRATE_DESTROYED:
+                        game_event_reward += 100
+                    case e.COIN_FOUND:
+                        game_event_reward += 200
+                    case e.COIN_COLLECTED:
+                        game_event_reward += 1000
+                    case e.KILLED_OPPONENT:
+                        game_event_reward += 5000
+                    case e.KILLED_SELF:
+                        game_event_reward -= 500
+                    case e.GOT_KILLED:
+                        game_event_reward -= 1500
+                    case e.OPPONENT_ELIMINATED:
+                        game_event_reward -= 10
+                    case e.SURVIVED_ROUND:
+                        game_event_reward += 500
 
-        # Get reward
-        # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment
-        for event in self.PPO_agent.events:
-            match(event):
-                case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
-                case e.WAITED:
-                    reward += 1
-                case e.INVALID_ACTION:
-                    reward -= 15
-                case e.BOMB_DROPPED:
-                    reward += 3
-                case e.BOMB_EXPLODED:
-                    reward += 3
-                case e.CRATE_DESTROYED:
-                    reward += 20
-                case e.COIN_FOUND:
-                    reward += 50
-                case e.COIN_COLLECTED:
-                    reward += 1000
-                case e.KILLED_OPPONENT:
-                    reward += 5000
-                case e.KILLED_SELF:
-                    reward -= 100
-                case e.GOT_KILLED:
-                    reward -= 200
-                case e.OPPONENT_ELIMINATED:
-                    reward -= 10
-                case e.SURVIVED_ROUND:
-                    reward += 500
+            survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
+            
+            # to prevent agent to back and forward
+            back_forward_punishment = 0
+            if len(self.trajectory) > 2:
+                last_pos = self.trajectory[-1]
+                wait_time = 0
+                for pos in reversed(self.trajectory):
+                    if pos != last_pos:
+                        break
+                    else:
+                        wait_time += 1
+                if pos == current_pos:
+                    back_forward_punishment -= 50
+                non_explore_punishment -= wait_time * 5
 
-
-        # the reward in gym is the smaller the better
-        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
+            reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
+            
+            # maintain self.trajectory
+            self.trajectory.append(current_pos)
+            
+            return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 
 
     def reset(self, seed = None):
@@ -251,23 +293,16 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
         # Get first observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        game_state = self.world.get_state_for_agent(self.deep_agent)
         observation = fromStateToObservation(game_state)
 
         return observation, {"info": "reset"}
     
 
     def render(self):
-        if self.gui is not None:
-            self.my_render(self.every_step)
-
+        pass
 
     def close(self):
-        if self.make_video:
-            self.gui.make_video()
-        
-        # Can render end screen until next round is queried
-        
         self.world.end()
 
 

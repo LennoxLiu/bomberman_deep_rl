@@ -9,6 +9,7 @@ import agents
 
 import main
 import math
+from RuleBasedAgent import RuleBasedAgent
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
@@ -39,12 +40,10 @@ def fromStateToObservation(game_state):
         # 3-4: explosion still dangerous(as > 0 in explosion_map: 2,1)
         explosion_map = game_state["explosion_map"].astype(np.uint8)
         explosion_map[explosion_map > 0] += 2
-        observation["bomb_and_explosion"][game_state["self"][3]] = 2
-        observation["bomb_and_explosion"] = explosion_map
+        explosion_map[game_state["self"][3]] = 2
         for bomb in game_state["bombs"]:
-            observation["bomb_and_explosion"][bomb[0]] = 1
-        
-        observation["bomb_and_explosion"] = observation["bomb_and_explosion"].flatten()
+            explosion_map[bomb[0]] = 1
+        observation["bomb_and_explosion"] = explosion_map.flatten()
         assert MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8).contains(observation["bomb_and_explosion"])
 
         observation["bomb_possible"] = int(game_state["self"][2])
@@ -81,6 +80,7 @@ class CustomEnv(gym.Env):
         # Define action and observation space
         # They must be gym.spaces objects
         self.trajectory = []
+        self.rule_based_agent = RuleBasedAgent()
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
@@ -151,11 +151,11 @@ class CustomEnv(gym.Env):
             else:
                 observation = fromStateToObservation(game_state)
 
-                    # terminated or trunctated
+            # terminated or trunctated
             if self.world.running == False:
                 if self.world.step == s.MAX_STEPS:
                     terminated = True
-                
+            
             a = math.log(2)
             b = 2**2
             # calculate non-explore punishment
@@ -283,7 +283,7 @@ class CustomEnv(gym.Env):
             
             # maintain self.trajectory
             self.trajectory.append(current_pos)
-            
+                        
             return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 
 
@@ -291,6 +291,8 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed) # following documentation
         
         self.trajectory = []
+        self.rule_based_agent.reset_self()
+
         # start a new round
         self.world.new_round()
 
