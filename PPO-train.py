@@ -54,7 +54,7 @@ new_parameters = {
     "stats_window_size":  400,
     "clip_range": 0.1,
     }
-model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(20480/6*5), progress_bar=True, log_interval = 2)
     # total_timesteps=20480

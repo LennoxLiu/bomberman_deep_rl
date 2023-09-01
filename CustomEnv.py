@@ -16,28 +16,22 @@ def fromStateToObservation(game_state):
         observation = {}
         one_array = np.ones(s.COLS* s.ROWS)
 
-        # 0: ston walls, 1: free tiles
-        game_field = game_state["field"].astype(np.uint8)
-        observation["field"] = game_field.flatten()
-        observation["field"] += 1
-        observation["field"][observation["field"] == 2] = 0 # remove crates
-        assert MultiDiscrete(nvec= one_array * 3, dtype = np.uint8).contains(observation["field"])
+        game_field = game_state["field"].astype(np.uint8) 
+        # 1 for crates, −1 for stone walls and 0 for free tiles
 
-        # 0: nothing, 1: coin, 2: crates
-        # 3: other agent with bomb, 4: other agent without bomb
+        # 0: stone walls, 1: free tiles, 2: crates
+        # 3: coin
+        # 4: other agent
         # 5: self
-        observation["targets"] = np.zeros((s.COLS, s.ROWS),dtype = np.uint8)
+        observation["field_and_targets"] = game_field + 1
+
         for coin in game_state["coins"]:
-            observation["targets"][coin] = 1 # coin
-        observation["targets"][game_field == 1] = 2 # crates
+            observation["field_and_targets"][coin] = 3 # coin
         for other in game_state["others"]:
-            if other[2] == True: # has bomb
-                observation["targets"][other[3]] = 3 
-            else:
-                observation["targets"][other[3]] = 4
-        observation["targets"][game_state["self"][3]] = 5
-        observation["targets"] = observation["targets"].flatten()
-        assert MultiDiscrete(nvec= one_array * 6, dtype = np.uint8).contains(observation["targets"])
+            observation["field_and_targets"][other[3]] = 4
+        observation["field_and_targets"][game_state["self"][3]] = 5
+        observation["field_and_targets"] = observation["field_and_targets"].flatten()
+        assert MultiDiscrete(nvec= one_array * 6, dtype = np.uint8).contains(observation["field_and_targets"])
 
         # 0: nothing
         # 1: bomb
@@ -53,7 +47,7 @@ def fromStateToObservation(game_state):
         observation["bomb_possible"] = int(game_state["self"][2])
         assert Discrete(2).contains(observation["bomb_possible"])
         
-        spaces.Dict({"field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),"targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
+        spaces.Dict({"field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),"bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),"bomb_possible": Discrete(2)}).contains(observation)
         return observation
 
 
@@ -90,13 +84,11 @@ class CustomEnv(gym.Env):
         one_array = np.ones(s.COLS* s.ROWS)
         # Do not pass "round", opponent score
         self.observation_space = spaces.Dict(
-            {
-                "field": MultiDiscrete(nvec= one_array * 3, dtype = np.uint8),
-                # 0: ston walls, 1: free tiles
-                
-                "targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),
-                # 0: nothing, 1: coin, 2: crates
-                # 3: other agent with bomb, 4: other agent without bomb
+            {   
+                "field_and_targets": MultiDiscrete(nvec= one_array * 6, dtype = np.uint8),
+                # 0: stone walls, 1: free tiles, 2: crates
+                # 3: coin
+                # 4: other agent
                 # 5: self
                 
                 "bomb_and_explosion": MultiDiscrete(nvec= one_array * 2 + s.EXPLOSION_TIMER, dtype = np.uint8),
