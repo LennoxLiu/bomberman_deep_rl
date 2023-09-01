@@ -107,7 +107,7 @@ model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
 env = gym.wrappers.NormalizeReward(env)
-model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
+model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 2048, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -129,7 +129,7 @@ new_parameters = {
     "stats_window_size":  400,
     "clip_range": 0.2,
     }
-model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
