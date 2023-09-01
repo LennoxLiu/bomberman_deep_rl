@@ -4,6 +4,10 @@ from stable_baselines3 import DQN
 from stable_baselines3.common.env_util import make_vec_env
 from CustomEnv import CustomEnv
 from tqdm import tqdm
+import torch as th
+import torch.nn as nn
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+from gymnasium import spaces
 
 
 def linear_schedule(initial_value: float):
@@ -25,8 +29,6 @@ def linear_schedule(initial_value: float):
 
     return func
 
-from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
-
 
 class CustomCNN(BaseFeaturesExtractor):
     """
@@ -39,7 +41,7 @@ class CustomCNN(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
         # Re-ordering will be done by pre-preprocessing or wrapper
-        n_input_channels = 1
+        n_input_channels = observation_space.shape[0]
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
             nn.ReLU(),
@@ -62,11 +64,6 @@ class CustomCNN(BaseFeaturesExtractor):
 policy_kwargs = dict(
     features_extractor_class=CustomCNN,
     features_extractor_kwargs=dict(features_dim=128),
-    activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[32, 32], vf=[32, 32])
-    # Custom actor (pi) and value function (vf) networks
-    # of two layers of size 32 each with Relu activation function
-    # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
 )
 
 
@@ -79,7 +76,7 @@ env = CustomEnv()
 env.metadata = option
 # env = gym.wrappers.NormalizeReward(env)
 
-model = DQN("CnnPolicy", env, verbose=1, learning_starts=0,
+model = DQN("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_starts=0,
             learning_rate = 0.0001,
             target_update_interval= 500,
             exploration_fraction=0.1,
@@ -90,6 +87,7 @@ model = DQN("CnnPolicy", env, verbose=1, learning_starts=0,
 
 
 new_parameters = {
+    "policy_kwargs":policy_kwargs,
     "learning_rate": 0.0001,
     "target_update_interval": 500, # more n_steps means more robust, less tuned
     "batch_size": 64,

@@ -15,7 +15,6 @@ from RuleBasedAgent import RuleBasedAgent
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-        one_array = np.ones(s.COLS * s.ROWS)
         
         # 0: ston walls, 1: free tiles, 2: crates, 
         observation = game_state["field"].astype(np.uint8) + 1
@@ -51,8 +50,12 @@ def fromStateToObservation(game_state):
         for bomb in game_state["bombs"]:
             observation[bomb[0]] = 11 + s.EXPLOSION_TIMER*2 + bomb[1]
         
-        assert Box(low = 0, high =  ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), shape=(s.COLS, s.ROWS), dtype = np.uint8).contains(observation)
+        # rescale to image
+        observation *= int(255 / (11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER))
 
+        observation = observation.reshape((s.COLS,s.ROWS,1))
+        assert Box(low = 0, high =  255, shape=(s.COLS, s.ROWS,1), dtype = np.uint8).contains(observation)
+        
         return observation
 
 
@@ -88,7 +91,7 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        self.observation_space = Box(low = 0, high =  ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), shape=(s.COLS, s.ROWS), dtype = np.uint8)
+        self.observation_space = Box(low = 0, high = 255, shape=(s.COLS, s.ROWS,1), dtype = np.uint8)
                 # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self without bomb, 7: self with bomb, 8: self with bomb on top
