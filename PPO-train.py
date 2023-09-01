@@ -53,6 +53,30 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Flatten(),
         )
+        #     self.cnn = nn.Sequential(
+        #     nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=0.5),  # Dropout Layer
+        #     nn.BatchNorm2d(32),
+        #     nn.MaxPool2d(kernel_size=2, stride=2),
+            
+        #     nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=0.5),  # Dropout Layer
+        #     nn.BatchNorm2d(64),
+            
+        #     nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=0.5),  # Dropout Layer
+        #     nn.BatchNorm2d(128),
+            
+        #     nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
+        #     nn.ReLU(),
+        #     nn.Dropout(p=0.5),  # Dropout Layer
+        #     nn.BatchNorm2d(256),
+            
+        #     nn.Flatten(),
+        # )
 
         # Compute shape by doing one forward pass
         with th.no_grad():
@@ -82,8 +106,8 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
-# env = gym.wrappers.NormalizeReward(env)
-# model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
+env = gym.wrappers.NormalizeReward(env)
+model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
