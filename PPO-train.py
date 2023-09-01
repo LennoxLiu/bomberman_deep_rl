@@ -27,12 +27,14 @@ def linear_schedule(initial_value: float):
     return func
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "rule_based_agent","rule_based_agent","coin_collector_agent", \
-                                            "--scenario","classic"]}
+                                            "rule_based_agent","rule_based_agent","rule_based_agent", \
+                                            "--scenario","classic"],
+        "enable_rule_based_agent_reward": True}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
-
-env = CustomEnv(options = option)
-# model = PPO("MlpPolicy", env, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 400)
+env = CustomEnv()
+env.metadata = option
+# env = gym.wrappers.NormalizeReward(env)
+model = PPO("CnnPolicy", env, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -52,9 +54,9 @@ new_parameters = {
     "n_steps": 2048, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  400,
-    "clip_range": 0.1,
+    "clip_range": 0.2,
     }
-model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(20480/6*5), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
