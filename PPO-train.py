@@ -49,6 +49,8 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Conv2d(32, 64, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=8, stride=4, padding=0),
+            nn.ReLU(),
             nn.Flatten(),
         )
 
@@ -65,9 +67,9 @@ class CustomCNN(BaseFeaturesExtractor):
 
 policy_kwargs = dict(
     features_extractor_class=CustomCNN,
-    features_extractor_kwargs=dict(features_dim=128),
+    features_extractor_kwargs=dict(features_dim=256),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[64, 32], vf=[64, 32])
+    net_arch=dict(pi=[128, 64, 32, 16], vf=[128, 64, 32, 16])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
@@ -81,7 +83,7 @@ model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
 # env = gym.wrappers.NormalizeReward(env)
-model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
+# model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -103,7 +105,7 @@ new_parameters = {
     "stats_window_size":  400,
     "clip_range": 0.2,
     }
-model = PPO.load(model_path, env = env, policy_kwargs=policy_kwargs, force_reset = True, custom_objects = new_parameters) 
+model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
