@@ -70,11 +70,6 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.Dropout(p=0.5),  # Dropout Layer
             nn.BatchNorm2d(128),
             
-            nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1),
-            nn.ReLU(),
-            nn.Dropout(p=0.5),  # Dropout Layer
-            nn.BatchNorm2d(256),
-            
             nn.Flatten(),
         )
 
@@ -91,9 +86,9 @@ class CustomCNN(BaseFeaturesExtractor):
 
 policy_kwargs = dict(
     features_extractor_class=CustomCNN,
-    features_extractor_kwargs=dict(features_dim=256),
+    features_extractor_kwargs=dict(features_dim=128),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[128, 64, 32, 16], vf=[128, 64, 32, 16])
+    net_arch=dict(pi=[64, 32, 16], vf=[64, 32, 16])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
@@ -106,8 +101,8 @@ option={"argv": ["play","--no-gui","--agents","user_agent",\
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
-env = gym.wrappers.NormalizeReward(env)
-model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 2048, batch_size = 64, stats_window_size = 100)
+# env = gym.wrappers.NormalizeReward(env)
+model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 # learning_rate: float | Schedule = 0.0003,
 #  n_steps: int = 2048, batch_size: int = 64,
 #  n_epochs: int = 10, gamma: float = 0.99,
@@ -124,9 +119,9 @@ model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_r
 
 new_parameters = {
     "learning_rate": 0.0003,
-    "n_steps": 2048, # more n_steps means more robust, less tuned
+    "n_steps": 512, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "stats_window_size":  400,
+    "stats_window_size":  100,
     "clip_range": 0.2,
     }
 # model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
