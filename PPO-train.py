@@ -56,19 +56,15 @@ class CustomCNN(BaseFeaturesExtractor):
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.5),  # Dropout Layer
-            nn.BatchNorm2d(32),
-            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.Dropout(p=0.1),
             
             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.5),  # Dropout Layer
-            nn.BatchNorm2d(64),
+            nn.Dropout(p=0.1),
             
             nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.5),  # Dropout Layer
-            nn.BatchNorm2d(128),
+            nn.Dropout(p=0.1),
             
             nn.Flatten(),
         )
@@ -88,7 +84,7 @@ policy_kwargs = dict(
     features_extractor_class=CustomCNN,
     features_extractor_kwargs=dict(features_dim=128),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[64, 32, 16], vf=[64, 32, 16])
+    net_arch=dict(pi=[128 ,64, 32], vf=[128, 64, 32])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
@@ -102,20 +98,8 @@ model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
 # env = gym.wrappers.NormalizeReward(env)
-model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
-# learning_rate: float | Schedule = 0.0003,
-#  n_steps: int = 2048, batch_size: int = 64,
-#  n_epochs: int = 10, gamma: float = 0.99,
-#  gae_lambda: float = 0.95, clip_range: float | Schedule = 0.2,
-#  clip_range_vf: float | Schedule | None = None,
-#  normalize_advantage: bool = True, ent_coef: float = 0,
-#  vf_coef: float = 0.5, max_grad_norm: float = 0.5,
-#  use_sde: bool = False, sde_sample_freq: int = -1,
-#  target_kl: float | None = None, stats_window_size: int = 100,
-#  tensorboard_log: str | None = None,
-#  policy_kwargs: Dict[str, Any] | None = None,
-#  verbose: int = 0, seed: int | None = None,
-#  device: device | str = "auto", _init_setup_model: bool = True) -> None
+# model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
+
 
 new_parameters = {
     "learning_rate": 0.0003,
@@ -124,7 +108,7 @@ new_parameters = {
     "stats_window_size":  100,
     "clip_range": 0.2,
     }
-# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
