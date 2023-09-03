@@ -49,8 +49,10 @@ def fromStateToObservation(game_state):
         # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
         for bomb in game_state["bombs"]:
             observation[bomb[0]] = 11 + s.EXPLOSION_TIMER*2 + bomb[1]
+
+        observation = observation.flatten()
         
-        assert Box(low = 0, high =  ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), shape=(1, s.COLS, s.ROWS), dtype = np.uint8).contains(observation)
+        assert MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8).contains(observation)
 
         return observation
 
@@ -85,7 +87,8 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        self.observation_space = Box(low = 0, high =  ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), shape=(s.COLS, s.ROWS), dtype = np.uint8)
+        one_array = np.ones(s.COLS * s.ROWS)
+        self.observation_space = MultiDiscrete(nvec=one_array * ( 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER), dtype = np.uint8)
                 # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self without bomb, 7: self with bomb, 8: self with bomb on top

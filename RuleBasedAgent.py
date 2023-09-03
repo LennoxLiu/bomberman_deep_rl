@@ -196,8 +196,4 @@ class RuleBasedAgent():
         while len(action_ideas) > 0:
             a = action_ideas.pop()
             if a in valid_actions:
-                # Keep track of chosen action for cycle detection
-                if a == 'BOMB':
-                    self.bomb_history.append((x, y))
-
                 return a
