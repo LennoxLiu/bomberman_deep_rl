@@ -285,9 +285,9 @@ class CustomEnv(gym.Env):
                 reward = 0
                 target_actions = self.rule_based_agent.act(game_state)
                 if ACTION_MAP[action] in target_actions:
-                    reward = 100
+                    reward = 100/len(target_actions) # the less the actions, the more precise it need
                 else:
-                    reward = -10
+                    reward = -5*len(target_actions)
         
         return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 
