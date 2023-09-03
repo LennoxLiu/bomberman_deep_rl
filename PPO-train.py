@@ -56,15 +56,12 @@ class CustomCNN(BaseFeaturesExtractor):
         self.cnn = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.1),
             
             nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.1),
             
-            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1),
+            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1),
             nn.ReLU(),
-            nn.Dropout(p=0.1),
             
             nn.Flatten(),
         )
@@ -98,7 +95,7 @@ model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
 # env = gym.wrappers.NormalizeReward(env)
-# model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
+model = PPO("CnnPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 
 
 new_parameters = {
@@ -108,7 +105,7 @@ new_parameters = {
     "stats_window_size":  100,
     "clip_range": 0.2,
     }
-model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 2)
     # total_timesteps=20480
