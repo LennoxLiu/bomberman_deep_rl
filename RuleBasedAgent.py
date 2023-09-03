@@ -192,8 +192,10 @@ class RuleBasedAgent():
             if xb == x and yb == y:
                 action_ideas.extend(action_ideas[:4])
 
-        # Pick last action added to the proposals list that is also valid
+        # return all valid action_ideas
+        valid_action_ideas = set()
         while len(action_ideas) > 0:
             a = action_ideas.pop()
             if a in valid_actions:
-                return a
+                valid_action_ideas.add(a)
+        return valid_action_ideas
