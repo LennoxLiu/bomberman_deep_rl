@@ -287,7 +287,7 @@ class CustomEnv(gym.Env):
                 if ACTION_MAP[action] in target_actions:
                     reward = 100
                 else:
-                    reward = -1
+                    reward = -10
         
         return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 

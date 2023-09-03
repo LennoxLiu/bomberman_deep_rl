@@ -93,8 +93,6 @@ env = CustomEnv()
 env.metadata = option
 # env = gym.wrappers.NormalizeReward(env)
 # model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
-
-
 new_parameters = {
     "learning_rate": 0.0003,
     "n_steps": 2048, # more n_steps means more robust, less tuned
