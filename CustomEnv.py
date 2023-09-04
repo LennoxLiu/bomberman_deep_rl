@@ -289,7 +289,7 @@ class CustomEnv(gym.Env):
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
             elif ACTION_MAP[action] in valid_actions:
-                reward += 20
+                reward += 1
         
         return observation, reward, terminated, truncated, {}
 
