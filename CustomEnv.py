@@ -250,11 +250,11 @@ class CustomEnv(gym.Env):
                     case e.COIN_COLLECTED:
                         game_event_reward += 1000
                     case e.KILLED_OPPONENT:
-                        game_event_reward += 5000
+                        game_event_reward += 5000 
                     case e.KILLED_SELF:
-                        game_event_reward -= 100
+                        game_event_reward -= 2000 * (1- game_state["step"]/s.MAX_STEPS)
                     case e.GOT_KILLED:
-                        game_event_reward -= 500
+                        game_event_reward -= 1000 * (1- game_state["step"]/s.MAX_STEPS)
                     case e.OPPONENT_ELIMINATED:
                         game_event_reward -= 10
                     case e.SURVIVED_ROUND:
@@ -277,17 +277,15 @@ class CustomEnv(gym.Env):
                 non_explore_punishment -= wait_time * 5
 
             reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
-            
+        
             # maintain self.trajectory
             self.trajectory.append(current_pos)
 
-        else: # enable rule_based_agent_reward
-                reward = 0
-                target_action = self.rule_based_agent.act(game_state)
-                if ACTION_MAP[action] == target_action:
-                    reward = 100 # the less the actions, the more precise it need
-                else:
-                    reward = -5
+        if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
+            reward = 0
+            target_action = self.rule_based_agent.act(game_state)
+            if ACTION_MAP[action] == target_action:
+                reward = 100 #1000
         
         return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
 
