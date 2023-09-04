@@ -288,6 +288,8 @@ class CustomEnv(gym.Env):
             
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
+                if ACTION_MAP[action] == "BOMB":
+                    reward += 50
             elif ACTION_MAP[action] in valid_actions:
                 reward += 1
         
