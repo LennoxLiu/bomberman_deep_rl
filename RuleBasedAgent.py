@@ -192,10 +192,8 @@ class RuleBasedAgent():
             if xb == x and yb == y:
                 action_ideas.extend(action_ideas[:4])
 
-        # return all valid action_ideas
-        valid_action_ideas = set()
+        # return single action
         while len(action_ideas) > 0:
             a = action_ideas.pop()
             if a in valid_actions:
-                valid_action_ideas.add(a)
-        return valid_action_ideas
+                return a

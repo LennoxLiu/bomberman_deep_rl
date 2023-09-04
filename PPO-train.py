@@ -95,7 +95,7 @@ env.metadata = option
 # model = PPO("MlpPolicy", env, policy_kwargs=policy_kwargs, verbose=1, learning_rate = 0.0003, n_steps = 512, batch_size = 64, stats_window_size = 100)
 new_parameters = {
     "learning_rate": 0.0003,
-    "n_steps": 512, # more n_steps means more robust, less tuned
+    "n_steps": 1024, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "stats_window_size":  100,
     "clip_range": 0.2,
