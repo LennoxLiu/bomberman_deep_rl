@@ -146,13 +146,15 @@ class CustomEnv(gym.Env):
             if self.world.step == s.MAX_STEPS:
                 terminated = True
         
+        current_pos = game_state["self"][3]
+        
         if not self.metadata["enable_rule_based_agent_reward"]:
         #### start to calculate reward_goal
             a = math.log(2)
             b = 2**2
             # calculate non-explore punishment
             non_explore_punishment = 0
-            current_pos = game_state["self"][3]
+            
             for i in range(1, len(self.trajectory)):
                 pos = self.trajectory[-i] 
                 non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
@@ -277,8 +279,8 @@ class CustomEnv(gym.Env):
 
             reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
         
-            # maintain self.trajectory
-            self.trajectory.append(current_pos)
+        # maintain self.trajectory
+        self.trajectory.append(current_pos)
 
         if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
             reward = 0
@@ -292,6 +294,16 @@ class CustomEnv(gym.Env):
                     reward += 50
             elif ACTION_MAP[action] in valid_actions:
                 reward += 1
+            
+            # to prevent agent to back and forward
+            back_forward_punishment = 0
+            if len(self.trajectory) > 2:
+                last_pos = self.trajectory[-1]
+                for pos in reversed(self.trajectory):
+                    if pos != last_pos:
+                        break
+                if pos == current_pos:
+                    back_forward_punishment -= 150
         
         return observation, reward, terminated, truncated, {}
 
