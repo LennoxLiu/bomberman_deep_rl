@@ -106,7 +106,7 @@ env = CustomEnv()
 env.metadata = option
 
 # delete_contents_of_folder("./tb_log/")
-model = PPO("MlpPolicy", env, learning_rate = 0.0001, n_steps = 2048, batch_size = 256, verbose=0,tensorboard_log="./tb_log/", policy_kwargs=policy_kwargs, stats_window_size = 100)
+# model = PPO("MlpPolicy", env, learning_rate = 0.0001, n_steps = 2048, batch_size = 256, verbose=0,tensorboard_log="./tb_log/", policy_kwargs=policy_kwargs, stats_window_size = 100)
 
 new_parameters = {
     "learning_rate": 0.0001,
@@ -118,7 +118,7 @@ new_parameters = {
     "verbose": 0
     }
 
-# model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = PPO.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 
 while True:
     model.learn(total_timesteps=int(2048*25), progress_bar=True, log_interval = 1, reset_num_timesteps=False)

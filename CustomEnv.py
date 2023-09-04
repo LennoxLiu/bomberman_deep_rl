@@ -126,8 +126,7 @@ class CustomEnv(gym.Env):
         return distance
 
     def step(self, action):
-        self.world.do_step(ACTION_MAP[action])
-        self.user_input = None
+        self.world.do_step(user_input = ACTION_MAP[action])
 
         terminated = False
         truncated = False
@@ -283,11 +282,16 @@ class CustomEnv(gym.Env):
 
         if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
             reward = 0
-            target_action = self.rule_based_agent.act(game_state)
+            
+            target_action, valid_actions = self.rule_based_agent.act(self.deep_agent.last_game_state)
+            # print(target_action, valid_actions)
+            
             if ACTION_MAP[action] == target_action:
-                reward = 100 #1000
+                reward += 100 #1000
+            elif ACTION_MAP[action] in valid_actions:
+                reward += 20
         
-        return observation, reward, terminated, truncated, {"events" : self.deep_agent.events, "reward": reward}
+        return observation, reward, terminated, truncated, {}
 
 
     def reset(self, seed = None):

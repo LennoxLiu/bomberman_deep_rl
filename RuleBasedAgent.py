@@ -196,4 +196,5 @@ class RuleBasedAgent():
         while len(action_ideas) > 0:
             a = action_ideas.pop()
             if a in valid_actions:
-                return a
+                return a, valid_actions
+        return "WAIT", valid_actions
