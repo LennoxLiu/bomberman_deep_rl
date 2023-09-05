@@ -304,6 +304,7 @@ class CustomEnv(gym.Env):
                         break
                 if pos == current_pos:
                     back_forward_punishment -= 150
+            reward += back_forward_punishment
         
         return observation, reward, terminated, truncated, {}
 
