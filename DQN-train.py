@@ -112,8 +112,8 @@ new_parameters = {
     "learning_rate": 0.0003,
     "target_update_interval": 10240, # more n_steps means more robust, less tuned
     "batch_size": 64,
-    "tau": 0.8,#0.05,
-    "gamma": 0.5,
+    "tau": 0.9,#0.05,
+    "gamma": 0.1,
     # "exploration_fraction": 0.99,
     # "exploration_initial_eps": 0.5,
     "exploration_final_eps":0.2,
