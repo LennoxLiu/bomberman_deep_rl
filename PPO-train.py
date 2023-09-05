@@ -73,8 +73,6 @@ class CustomMLP(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Linear(256, 256),
             nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
             nn.Linear(256, 128),
             nn.ReLU(),
             # nn.Flatten(),
@@ -91,7 +89,7 @@ policy_kwargs = dict(
     features_extractor_class=CustomMLP,
     features_extractor_kwargs=dict(features_dim=128),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[128,128, 64, 64, 32], vf=[128, 128, 64, 64, 32])
+    net_arch=dict(pi=[128, 64, 64, 32], vf=[ 128, 64, 64, 32])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
