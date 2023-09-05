@@ -279,8 +279,6 @@ class CustomEnv(gym.Env):
 
             reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
         
-        # maintain self.trajectory
-        self.trajectory.append(current_pos)
 
         if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
             reward = 0
@@ -299,12 +297,19 @@ class CustomEnv(gym.Env):
             back_forward_punishment = 0
             if len(self.trajectory) > 2:
                 last_pos = self.trajectory[-1]
+                wait_time = 0
                 for pos in reversed(self.trajectory):
                     if pos != last_pos:
                         break
+                    else:
+                        wait_time += 1
                 if pos == current_pos:
-                    back_forward_punishment -= 150
-            reward += back_forward_punishment
+                    reward -= 20 # back and forth punishment
+                if ACTION_MAP[action] != "BOMB":
+                    reward -= wait_time * 5 # Waiting punishment
+        
+        # maintain self.trajectory
+        self.trajectory.append(current_pos)
         
         return observation, reward, terminated, truncated, {}
 
