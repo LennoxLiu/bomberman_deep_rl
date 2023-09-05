@@ -75,8 +75,8 @@ policy_kwargs = dict(
 )
 
 model = DQN("MlpPolicy", env, learning_starts=0,
-            tau = 0.005,
-            gamma = 0, # training by rule_based_agent
+            tau = 0.8,
+            gamma = 0.1, # training by rule_based_agent, only need immediate reward
             learning_rate = 0.0001,
             target_update_interval= 10240,
             exploration_fraction=0.9,
@@ -88,7 +88,10 @@ model = DQN("MlpPolicy", env, learning_starts=0,
             verbose = 0
             )
 
+# target_update_interval. Increasing the frequency of updates can make learning more stable but might slow down convergence, while decreasing the frequency can make learning more efficient but potentially less stable.
 # A higher γ places more emphasis on long-term rewards and encourages the agent to consider future consequences in its decision-making. A lower γ makes the agent more focused on immediate rewards.
+# tau: cita = tau* cita_new + (1-tau)*cita_old
+
 # (policy: str | type[DQNPolicy], env: GymEnv | str,
 #  learning_rate: float | Schedule = 0.0001,
 #  buffer_size: int = 1000000, learning_starts: int = 50000,
@@ -116,6 +119,6 @@ new_parameters = {
     }
 # model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
-    model.learn( total_timesteps=204800, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
+    model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
     # total_timesteps=61440
     model.save(model_path)

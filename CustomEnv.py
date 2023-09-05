@@ -288,25 +288,23 @@ class CustomEnv(gym.Env):
             
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
-                if ACTION_MAP[action] == "BOMB":
-                    reward += 50
             elif ACTION_MAP[action] in valid_actions:
                 reward += 1
             
             # to prevent agent to back and forward
-            back_forward_punishment = 0
-            if len(self.trajectory) > 2:
-                last_pos = self.trajectory[-1]
-                wait_time = 0
-                for pos in reversed(self.trajectory):
-                    if pos != last_pos:
-                        break
-                    else:
-                        wait_time += 1
-                if pos == current_pos:
-                    reward -= 20 # back and forth punishment
-                if ACTION_MAP[action] != "BOMB":
-                    reward -= wait_time * 5 # Waiting punishment
+            # back_forward_punishment = 0
+            # if len(self.trajectory) > 2:
+            #     last_pos = self.trajectory[-1]
+            #     wait_time = 0
+            #     for pos in reversed(self.trajectory):
+            #         if pos != last_pos:
+            #             break
+            #         else:
+            #             wait_time += 1
+            #     if pos == current_pos:
+            #         reward -= 20 # back and forth punishment
+            #     if ACTION_MAP[action] != "BOMB":
+            #         reward -= wait_time * 5 # Waiting punishment
         
         # maintain self.trajectory
         self.trajectory.append(current_pos)
