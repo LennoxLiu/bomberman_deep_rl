@@ -111,7 +111,7 @@ new_parameters = {
     "target_update_interval": 10240, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "tau": 0.9,#0.05,
-    # "gamma": 0.9,
+    "gamma": 0.01,
     # "exploration_fraction": 0.99,
     # "exploration_initial_eps": 0.5,
     "exploration_final_eps":0.2,
