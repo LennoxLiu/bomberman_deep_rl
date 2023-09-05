@@ -71,9 +71,9 @@ class CustomMLP(BaseFeaturesExtractor):
         self.mlp = nn.Sequential(
             nn.Linear(n_input_channels, 256),
             nn.ReLU(),
-            nn.Linear(256, 256),
-            nn.ReLU(),
             nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
             nn.ReLU(),
             # nn.Flatten(),
         )
@@ -89,27 +89,27 @@ policy_kwargs = dict(
     features_extractor_class=CustomMLP,
     features_extractor_kwargs=dict(features_dim=128),
     activation_fn=th.nn.ReLU,
-    net_arch=dict(pi=[128, 64, 64, 32], vf=[ 128, 64, 64, 32])
+    net_arch=dict(pi=[64, 64, 32], vf=[64, 64, 32])
     # Custom actor (pi) and value function (vf) networks
     # of two layers of size 32 each with Relu activation function
     # Note: an extra linear layer will be added on top of the pi and the vf nets, respectively
 )
 
 option={"argv": ["play","--no-gui","--agents","user_agent",\
-                                            "rule_based_agent","rule_based_agent","rule_based_agent", \
-                                            "--scenario","classic"],
+                                            "rule_based_agent", "peaceful_agent", "peaceful_agent"\
+                                            "--scenario","loot-crate-6"],
         "enable_rule_based_agent_reward": True}
 model_path = "./Original/agent_code/PPO_agent/ppo_bomberman"
 env = CustomEnv()
 env.metadata = option
 
 # delete_contents_of_folder("./tb_log/")
-# model = PPO("MlpPolicy", env, learning_rate = 0.0001, n_steps = 2048, batch_size = 256, verbose=0,tensorboard_log="./tb_log/", policy_kwargs=policy_kwargs, stats_window_size = 100)
+# model = PPO("MlpPolicy", env, learning_rate = linear_schedule(0.0005), n_steps = 2048, batch_size = 256, verbose=0,tensorboard_log="./tb_log/", policy_kwargs=policy_kwargs, stats_window_size = 100)
 
 new_parameters = {
-    "learning_rate": 0.0001,
+    "learning_rate": linear_schedule(0.0003),
     "n_steps": 2048, # more n_steps means more robust, less tuned
-    "batch_size": 256,
+    "batch_size": 128,
     "stats_window_size":  100,
     "clip_range": 0.2,
     "tensorboard_log":"./tb_log/",
