@@ -1,4 +1,5 @@
 import gymnasium as gym
+import numpy as np
 
 from stable_baselines3 import DQN
 from stable_baselines3.common.env_util import make_vec_env
@@ -10,6 +11,7 @@ import torch as th
 import torch.nn as nn
 from stable_baselines3 import PPO
 from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+
 
 def linear_schedule(initial_value: float):
     """
@@ -30,15 +32,15 @@ def linear_schedule(initial_value: float):
 
     return func
 
+
+model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
 option={"argv": ["play","--no-gui","--agents","user_agent",\
                                             "rule_based_agent","rule_based_agent","rule_based_agent", \
                                             "--scenario","classic"],
         "enable_rule_based_agent_reward": True}
-model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
 
 env = CustomEnv(options = option)
-env.metadata = option
-
+env_vec = make_vec_env(lambda: CustomEnv(option),n_envs=4,seed=np.random.randint(0, 2**31 - 1))
 
 class CustomMLP(BaseFeaturesExtractor):
     """
@@ -56,17 +58,14 @@ class CustomMLP(BaseFeaturesExtractor):
             nn.Linear(n_input_channels, 512),
             nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Dropout(0.1),
 
-            nn.Linear(512, 512),
-            nn.BatchNorm1d(512),
+            nn.Linear(512, 256),
+            nn.BatchNorm1d(256),
             nn.ReLU(),
-            nn.Dropout(0.1),
             
-            nn.Linear(512, features_dim),
+            nn.Linear(256, features_dim),
             nn.BatchNorm1d(features_dim),
             nn.ReLU(),
-            nn.Dropout(0.1),
             
         )
 
@@ -76,15 +75,16 @@ class CustomMLP(BaseFeaturesExtractor):
 
 policy_kwargs = dict(
     features_extractor_class=CustomMLP,
-    features_extractor_kwargs=dict(features_dim=512),
-    net_arch=[256, 128, 64, 64, 32]
+    features_extractor_kwargs=dict(features_dim=256),
+    net_arch=[128, 64, 64, 32]
 )
 
-model = DQN("MlpPolicy", env, learning_starts=0,
+model = DQN("MlpPolicy", env_vec, learning_starts=0,
             device="cpu",
+            batch_size=256,
             tau = 0.8, #0.8
-            gamma = 0.9, #0.1 training by rule_based_agent, only need immediate reward
-            learning_rate = 0.0003,#0.0001
+            gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
+            learning_rate = 0.0005,#0.0001
             target_update_interval= 5120,
             exploration_fraction=0.99,
             exploration_initial_eps = 0.9,
