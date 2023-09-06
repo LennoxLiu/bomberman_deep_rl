@@ -72,6 +72,7 @@ class CustomMLP(BaseFeaturesExtractor):
 policy_kwargs = dict(
     features_extractor_class=CustomMLP,
     features_extractor_kwargs=dict(features_dim=256),
+    net_arch=dict(pi=[128, 64, 32], qf=[256,128,64,64,32])
 )
 
 model = DQN("MlpPolicy", env, learning_starts=0,
