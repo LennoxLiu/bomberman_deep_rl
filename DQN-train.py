@@ -57,8 +57,6 @@ class CustomMLP(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
             nn.Linear(512, 256),
             nn.ReLU(),
             # nn.Flatten(),
@@ -74,7 +72,7 @@ class CustomMLP(BaseFeaturesExtractor):
 policy_kwargs = dict(
     features_extractor_class=CustomMLP,
     features_extractor_kwargs=dict(features_dim=256),
-    net_arch=[256, 128, 64, 64, 32]
+    net_arch=[256, 128, 64, 32]
 )
 
 model = DQN("MlpPolicy", env, learning_starts=0,
@@ -120,7 +118,7 @@ new_parameters = {
     "exploration_final_eps":0.2,
     "stats_window_size": 100
     }
-model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
     # total_timesteps=61440
