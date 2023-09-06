@@ -53,34 +53,44 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 256),
+            nn.Linear(n_input_channels, 512),
+            nn.BatchNorm1d(512),
             nn.ReLU(),
-            nn.Linear(256, 512),
-            nn.ReLU(),
-            nn.Linear(512, 256),
-            nn.ReLU(),
-            # nn.Flatten(),
-        )
-        n_flatten = 256
+            nn.Dropout(0.1),
 
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+            nn.Linear(512, 512),
+            nn.BatchNorm1d(512),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+
+            nn.Linear(512, 1024),
+            nn.BatchNorm1d(1024),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            
+            nn.Linear(1024, features_dim),
+            nn.BatchNorm1d(features_dim),
+            nn.ReLU(),
+            nn.Dropout(0.1),
+            
+        )
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.linear(self.mlp(observations))
+        return self.mlp(observations)
 
 
 policy_kwargs = dict(
     features_extractor_class=CustomMLP,
-    features_extractor_kwargs=dict(features_dim=256),
-    net_arch=[256, 128, 64, 32]
+    features_extractor_kwargs=dict(features_dim=1024),
+    net_arch=[512, 256, 128, 128, 64, 64, 32]
 )
 
 model = DQN("MlpPolicy", env, learning_starts=0,
-            tau = 0.9, #0.8
-            gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
+            tau = 0.8, #0.8
+            gamma = 0.9, #0.1 training by rule_based_agent, only need immediate reward
             learning_rate = 0.0003,#0.0001
-            target_update_interval= 10240,
-            exploration_fraction=0.9,
+            target_update_interval= 5120,
+            exploration_fraction=0.99,
             exploration_initial_eps = 0.9,
             exploration_final_eps = 0.2,
             stats_window_size= 100,
