@@ -78,7 +78,7 @@ policy_kwargs = dict(
 
 model = DQN("MlpPolicy", env, learning_starts=0,
             tau = 0.9, #0.8
-            gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
+            gamma = 0, #0.1 training by rule_based_agent, only need immediate reward
             learning_rate = 0.0003,#0.0001
             target_update_interval= 10240,
             exploration_fraction=0.9,
