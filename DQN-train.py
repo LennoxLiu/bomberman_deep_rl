@@ -57,6 +57,8 @@ class CustomMLP(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Linear(256, 512),
             nn.ReLU(),
+            nn.Linear(512, 512),
+            nn.ReLU(),
             nn.Linear(512, 256),
             nn.ReLU(),
             # nn.Flatten(),
@@ -72,12 +74,12 @@ class CustomMLP(BaseFeaturesExtractor):
 policy_kwargs = dict(
     features_extractor_class=CustomMLP,
     features_extractor_kwargs=dict(features_dim=256),
-    net_arch=dict(pi=[128, 64, 32], qf=[256,128,64,64,32])
+    net_arch=[256, 128, 64, 64, 32]
 )
 
 model = DQN("MlpPolicy", env, learning_starts=0,
             tau = 0.9, #0.8
-            gamma = 0.1, #0.1 training by rule_based_agent, only need immediate reward
+            gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
             learning_rate = 0.0003,#0.0001
             target_update_interval= 10240,
             exploration_fraction=0.9,
@@ -112,13 +114,13 @@ new_parameters = {
     "target_update_interval": 5120, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "tau": 0.8,#0.05,
-    "gamma": 0.5,
-    # "exploration_fraction": 0.99,
-    # "exploration_initial_eps": 0.5,
-    "exploration_final_eps":0.1,
+    "gamma": 0.9,
+    "exploration_fraction": 0.99,
+    "exploration_initial_eps": 0.5,
+    "exploration_final_eps":0.2,
     "stats_window_size": 100
     }
-# model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
+model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
 while True:
     model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
     # total_timesteps=61440
