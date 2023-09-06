@@ -109,14 +109,14 @@ model = DQN("MlpPolicy", env, learning_starts=0,
 #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
 new_parameters = {
-    "learning_rate": 0.0003,
+    "learning_rate": 0.0002,
     "target_update_interval": 5120, # more n_steps means more robust, less tuned
     "batch_size": 64,
     "tau": 0.9,#0.05,
-    "gamma": 0.5,
+    "gamma": 0.9,
     # "exploration_fraction": 0.99,
     # "exploration_initial_eps": 0.5,
-    "exploration_final_eps":0.2,
+    "exploration_final_eps":0.1,
     "stats_window_size": 100
     }
 model = DQN.load(model_path, env = env, force_reset = True, custom_objects = new_parameters) 
