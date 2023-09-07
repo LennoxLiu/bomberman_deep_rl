@@ -47,15 +47,15 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 512),
-            nn.BatchNorm1d(512),
-            nn.ReLU(),
-
-            nn.Linear(512, 256),
+            nn.Linear(n_input_channels, 256),
             nn.BatchNorm1d(256),
             nn.ReLU(),
+
+            nn.Linear(256, 128),
+            nn.BatchNorm1d(128),
+            nn.ReLU(),
             
-            nn.Linear(256, features_dim),
+            nn.Linear(128, features_dim),
             nn.BatchNorm1d(features_dim),
             nn.ReLU(),
             
@@ -73,14 +73,14 @@ if __name__ == '__main__':
             "enable_rule_based_agent_reward": True}
 
     env = CustomEnv(options = option)
-    env_vec = make_vec_env(CustomEnv,n_envs=8,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
+    env_vec = make_vec_env(CustomEnv,n_envs=4,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
     # envs = [CustomEnv(option) for _ in range(16)]
     # env_vec = SubprocVecEnv(envs)
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=256),
-        net_arch=[128, 64, 64, 32]
+        features_extractor_kwargs=dict(features_dim=64),
+        net_arch=[64, 32, 16]
     )
 
     model = DQN("MlpPolicy", env_vec, learning_starts=0,

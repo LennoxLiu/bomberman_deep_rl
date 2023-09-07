@@ -288,7 +288,7 @@ class CustomEnv(gym.Env):
             
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
-            elif ACTION_MAP[action] in valid_actions:
+            elif ACTION_MAP[action] != "WAIT" and ACTION_MAP[action]in valid_actions:
                 reward += 1
             
             # to prevent agent to back and forward

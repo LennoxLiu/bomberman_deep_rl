@@ -3,7 +3,7 @@ from CustomEnv import fromStateToObservation, ACTION_MAP
 from CustomEnv import CustomEnv
 
 def setup(self):
-    self.model = DQN.load("dqn_bomberman")
+    self.model = DQN.load("dqn_bomberman",device="cpu")
     print(self.model)
 
 
