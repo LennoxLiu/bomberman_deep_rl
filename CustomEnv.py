@@ -78,11 +78,11 @@ class CustomEnv(gym.Env):
 
     # metadata = {"render_modes": ["default"], "render_fps": 30}
 
-    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent"]}):
+    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent"],"enable_rule_based_agent_reward": False}):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
-        self.metadata = {"argv": ["play","--no-gui","--my-agent","user_agent"],"enable_rule_based_agent_reward": False}
+        self.metadata = options
         self.trajectory = []
         self.rule_based_agent = RuleBasedAgent()
 
@@ -333,53 +333,6 @@ class CustomEnv(gym.Env):
     def close(self):
         self.world.end()
 
-
-from stable_baselines3.common.vec_env import VecEnv
-
-class CustomVecEnv(VecEnv):
-    def __init__(self, envs):
-        """
-        Initialize the custom VecEnv.
-
-        :param envs: A list of gym environments that you want to manage in parallel.
-        """
-        self.envs = envs
-        self.num_envs = len(envs)
-
-    def reset(self):
-        """
-        Reset all environments and return the initial observations.
-
-        :return: A numpy array containing the initial observations for all environments.
-        """
-        initial_obs = [env.reset() for env in self.envs]
-        return initial_obs
-
-    def step_async(self, actions):
-        """
-        Asynchronously take a step in all environments given the specified actions.
-
-        :param actions: A list of actions for each environment.
-        """
-        for i, env in enumerate(self.envs):
-            env.step_async(actions[i])
-
-    def step_wait(self):
-        """
-        Wait for all asynchronous step operations to complete and return the results.
-
-        :return: Four lists - observations, rewards, dones, and infos for all environments.
-        """
-        results = [env.step_wait() for env in self.envs]
-        observations, rewards, dones, infos = zip(*results)
-        return list(observations), list(rewards), list(dones), list(infos)
-
-    def close(self):
-        """
-        Close all environments.
-        """
-        for env in self.envs:
-            env.close()
 
 
 if __name__ == "__main__":
