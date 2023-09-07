@@ -11,10 +11,15 @@ import main
 import math
 from RuleBasedAgent import RuleBasedAgent
 from features import state_to_features
+from features import FEATURE_DIM
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-    return state_to_features(game_state)
+    features = state_to_features(game_state).astype(np.float16)
+    # print(len(features))
+    # print(features)
+    assert Box(low=-np.inf,high = np.inf, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
+    return features
 
 def fromStateToObservation_old(game_state):
         one_array = np.ones(s.COLS * s.ROWS)
@@ -92,13 +97,14 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         one_array = np.ones(s.COLS * s.ROWS)
-        self.observation_space = Box(low = 0, high = 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER, shape=(s.COLS* s.ROWS,), dtype = np.uint8)
+        # self.observation_space = Box(low = 0, high = 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER, shape=(s.COLS* s.ROWS,), dtype = np.uint8)
                 # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
                 # 6: self without bomb, 7: self with bomb, 8: self with bomb on top
                 # 9~9+s.EXPLOSION_TIMER: explosion map
                 # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
                 # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
+        self.observation_space = Box(low=-np.inf,high = np.inf, shape=(FEATURE_DIM,), dtype = np.float16)
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
