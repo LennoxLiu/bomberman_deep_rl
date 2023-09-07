@@ -4,7 +4,6 @@ from CustomEnv import CustomEnv
 
 def setup(self):
     self.model = DQN.load("dqn_bomberman",device="cpu")
-    print(self.model)
 
 
 def act(self, game_state: dict):

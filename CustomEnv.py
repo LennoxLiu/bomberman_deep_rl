@@ -10,8 +10,8 @@ import agents
 import main
 import math
 from RuleBasedAgent import RuleBasedAgent
-from features import state_to_features
-from features import FEATURE_DIM
+from Features import state_to_features
+from Features import FEATURE_DIM
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
@@ -186,12 +186,12 @@ class CustomEnv(gym.Env):
                 for (xb, yb), t in game_state['bombs']:
                     if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
                         # Run away
-                        if ((yb > y) and last_action ==  'UP' and field[x,y+1] == 0) or \
-                            ((yb < y) and last_action == 'DOWN' and field[x,y-1] == 0):
+                        if ((yb > y) and last_action ==  'UP' and field[x,y-1] == 0) or \
+                            ((yb < y) and last_action == 'DOWN' and field[x,y+1] == 0):
                             escape_bomb_reward += 100
                         # Go towards bomb or wait
-                        if ((yb > y) and last_action ==  'DOWN' and field[x,y-1] == 0) or \
-                            ((yb < y) and last_action == 'UP' and field[x,y+1] == 0) or \
+                        if ((yb > y) and last_action ==  'DOWN' and field[x,y+1] == 0) or \
+                            ((yb < y) and last_action == 'UP' and field[x,y-1] == 0) or \
                             (last_action ==  'WAIT'):
                             escape_bomb_reward -= 100
                     if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
@@ -207,8 +207,8 @@ class CustomEnv(gym.Env):
 
                     # Try random direction if directly on top of a bomb
                     if xb == x and yb == y:
-                        if (last_action == "UP" and field[x,y+1] == 0) or \
-                            (last_action == "DOWN" and field[x,y-1] == 0) or \
+                        if (last_action == "UP" and field[x,y-1] == 0) or \
+                            (last_action == "DOWN" and field[x,y+1] == 0) or \
                             (last_action == "LEFT" and field[x-1,y] == 0) or \
                             (last_action == "RIGHT" and field[x+1,y] == 0)    :
                             escape_bomb_reward += 50
@@ -344,7 +344,6 @@ class CustomEnv(gym.Env):
 
     def close(self):
         self.world.end()
-
 
 
 if __name__ == "__main__":

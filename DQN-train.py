@@ -124,7 +124,7 @@ if __name__ == '__main__':
         "exploration_final_eps":0.1,
         "stats_window_size": 100
         }
-    model = DQN.load(model_path,env = env_vec, force_reset = True, custom_objects = new_parameters) 
+    # model = DQN.load(model_path,env = env_vec, force_reset = True, custom_objects = new_parameters) 
     while True:
         model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
