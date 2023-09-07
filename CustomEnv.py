@@ -10,10 +10,13 @@ import agents
 import main
 import math
 from RuleBasedAgent import RuleBasedAgent
-
+from features import state_to_features
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
+    return state_to_features(game_state)
+
+def fromStateToObservation_old(game_state):
         one_array = np.ones(s.COLS * s.ROWS)
         
         # 0: ston walls, 1: free tiles, 2: crates, 
