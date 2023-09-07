@@ -312,7 +312,7 @@ class CustomEnv(gym.Env):
         return observation, reward, terminated, truncated, {}
 
 
-    def reset(self, seed = None):
+    def reset(self, seed = np.random.randint(0, 2**31 - 1)):
         super().reset(seed=seed) # following documentation
         
         self.trajectory = []
