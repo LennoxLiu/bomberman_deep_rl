@@ -1,6 +1,7 @@
 from collections import deque
 import settings as s
 import numpy as np
+from CustomEnv import in_bomb_range
 
 class GetFeatures():
         
@@ -99,7 +100,33 @@ class GetFeatures():
                                                                              neighbours[i], closest_targets[j] )
             
             return target_distances_directions.flatten()
-    
+
+        # return true if there exist a path that can escape from current bomb
+        def can_escape(self, grid, start):
+            rows, cols = len(grid), len(grid[0])
+            visited = [[False for _ in range(cols)] for _ in range(rows)]
+            queue = deque([(start[0], start[1], 0)])
+
+            while queue:
+                x, y, length = queue.popleft()
+
+                if length <= s.BOMB_TIMER and not in_bomb_range(grid,start[0], start[1],x ,y):
+                    return True
+
+                visited[x][y] = True
+
+                if length < s.BOMB_TIMER:
+                    moves = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+
+                    for dx, dy in moves:
+                        new_x, new_y = x + dx, y + dy
+
+                        if (0 <= x < rows) and (0 <= y < cols) \
+                            and grid[x][y] == 0 and not visited[x][y]:
+                            queue.append((new_x, new_y, length + 1))
+
+            return False
+
 
         def state_to_features(self, game_state: dict):
             features = []
@@ -126,6 +153,23 @@ class GetFeatures():
             features.append(s.REWARD_COIN * (undiscovered_coins_cnt + len(game_state["coins"])) \
                                               + s.REWARD_KILL * len(game_state["others"]))
 
+            # add self score
+            self_score = game_state["self"][1]
+            features.append(self_score)
+
+            # add highest opponent score
+            highest_opponent_score = 0
+            for op in game_state["others"]:
+                if op[1] > highest_opponent_score:
+                    highest_opponent_score = op[1]
+            features.append(highest_opponent_score)
+
+            # add ratio of self score and highest opponent score
+            score_ratio = 0
+            if highest_opponent_score != 0:
+                score_ratio = self_score / highest_opponent_score
+            features.append(score_ratio)
+            
             # add valid actions(consider crates, wall, bombs)
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions)
@@ -161,10 +205,8 @@ class GetFeatures():
             features.append(bomb_crates_cnt * expected_coins_per_crate)
 
             # add whether to drop bomb, 0 means impossible to drop or will kill ourself
-            def will_suicide():
-                
             can_drop_bomb = 0
-            if bombs_left and not will_suicide(game_state):
+            if bombs_left and self.can_escape(game_state["field"],x_now,y_now):
                 can_drop_bomb = 1
             features.append(can_drop_bomb)
 
@@ -182,4 +224,14 @@ class GetFeatures():
             features.append(self.get_distances_directions(game_state["field"],
                                                            (x_now,y_now), crates_pos))
             
+            # add nearest 3 bombs
+            bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
+            features.append(self.get_distances_directions(game_state["field"],
+                                                           (x_now,y_now), bombs_pos))
+
+            # add directions to escape from bombs
+            # consider multiple bombs, check if in_bomb_range
+            escape = np.zeros(4)
+            # first unite explosion_map and bomb, 
+            # then find path to escape and return shorest length of path at each direction
 

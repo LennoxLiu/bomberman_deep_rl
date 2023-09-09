@@ -70,13 +70,13 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
             if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
                 is_in_bomb_range_x = True
                 for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
-                    if field[x,y_temp] == -1:
+                    if field[x][y_temp] == -1:
                         is_in_bomb_range_x = False
             
             if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
                 is_in_bomb_range_y = True
                 for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
-                    if field[x_temp,y] == -1:
+                    if field[x_temp][y] == -1:
                         is_in_bomb_range_y = False
             return is_in_bomb_range_x or is_in_bomb_range_y
 
@@ -121,7 +121,7 @@ class CustomEnv(gym.Env):
         self.deep_agent = None
         for a in self.world.agents:
             if a.name == "user_agent":
-                self.deep_agent = a
+                self.deep_agent = a # python automatically copy by reference
         assert isinstance(self.deep_agent, agents.Agent)
 
         # start a new round
@@ -146,8 +146,20 @@ class CustomEnv(gym.Env):
         if game_state == None: # the agent is dead
             truncated = True
             observation = fromStateToObservation(self.deep_agent.last_game_state)
-            game_state = self.deep_agent.last_game_state
-        else:
+            
+            # check if our agent wins
+            deep_agent_win = True
+            for agent in self.world.agents:
+                if agent.score > self.deep_agent.score:
+                    deep_agent_win = False
+            
+            reward = 0
+            if deep_agent_win:
+                reward = 10000
+
+            return observation, reward, terminated, truncated, {}
+        
+        else: # our agent is still alive
             observation = fromStateToObservation(game_state)
 
         # terminated or trunctated
