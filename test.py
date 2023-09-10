@@ -65,67 +65,76 @@
 
 # print(f"The indices of value 1 are: {indices_of_1}")
 
-from collections import deque
-import settings as s
+# from collections import deque
+# import settings as s
 
-def in_bomb_range(field,bomb_x,bomb_y,x,y):
-            is_in_bomb_range_x = False
-            is_in_bomb_range_y = False
-            if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
-                is_in_bomb_range_x = True
-                for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
-                    if field[x][y_temp] == -1:
-                        is_in_bomb_range_x = False
+# def in_bomb_range(field,bomb_x,bomb_y,x,y):
+#             is_in_bomb_range_x = False
+#             is_in_bomb_range_y = False
+#             if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
+#                 is_in_bomb_range_x = True
+#                 for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
+#                     if field[x][y_temp] == -1:
+#                         is_in_bomb_range_x = False
             
-            if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
-                is_in_bomb_range_y = True
-                for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
-                    if field[x_temp][y] == -1:
-                        is_in_bomb_range_y = False
-            return is_in_bomb_range_x or is_in_bomb_range_y
+#             if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
+#                 is_in_bomb_range_y = True
+#                 for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
+#                     if field[x_temp][y] == -1:
+#                         is_in_bomb_range_y = False
+#             return is_in_bomb_range_x or is_in_bomb_range_y
 
 
-def bfs(grid, start, TIME):
-    rows, cols = len(grid), len(grid[0])
-    visited = [[False for _ in range(cols)] for _ in range(rows)]
-    queue = deque([(start[0], start[1], 0)])
+# def bfs(grid, start, TIME):
+#     rows, cols = len(grid), len(grid[0])
+#     visited = [[False for _ in range(cols)] for _ in range(rows)]
+#     queue = deque([(start[0], start[1], 0)])
 
-    def is_valid_move(grid, visited, x, y):
-        rows, cols = len(grid), len(grid[0])
-        return (0 <= x < rows) and (0 <= y < cols) and grid[x][y] == 0 and not visited[x][y]
+#     def is_valid_move(grid, visited, x, y):
+#         rows, cols = len(grid), len(grid[0])
+#         return (0 <= x < rows) and (0 <= y < cols) and grid[x][y] == 0 and not visited[x][y]
 
-    while queue:
-        x, y, length = queue.popleft()
+#     while queue:
+#         x, y, length = queue.popleft()
 
-        if length <= TIME and not in_bomb_range(grid, start[0], start[1],x ,y):
-            return True
+#         if length <= TIME and not in_bomb_range(grid, start[0], start[1],x ,y):
+#             return True
 
-        visited[x][y] = True
+#         visited[x][y] = True
 
-        if length < TIME:
-            moves = [(0, 1), (0, -1), (1, 0), (-1, 0)]
+#         if length < TIME:
+#             moves = [(0, 1), (0, -1), (1, 0), (-1, 0)]
 
-            for dx, dy in moves:
-                new_x, new_y = x + dx, y + dy
+#             for dx, dy in moves:
+#                 new_x, new_y = x + dx, y + dy
 
-                if is_valid_move(grid, visited, new_x, new_y):
-                    queue.append((new_x, new_y, length + 1))
+#                 if is_valid_move(grid, visited, new_x, new_y):
+#                     queue.append((new_x, new_y, length + 1))
 
-    return False
+#     return False
 
-# Example usage:
-grid = [
-    [0, 1, 0, 1, 1],
-    [0, 1, 0, 0, 1],
-    [0, 1, 1, 1, 0],
-    [0, 0, 1, 1, 0]
-]
+# # Example usage:
+# grid = [
+#     [0, 1, 0, 1, 1],
+#     [0, 1, 0, 0, 1],
+#     [0, 1, 1, 1, 0],
+#     [0, 0, 1, 1, 0]
+# ]
 
-start = (1, 2)
-TIME = 2
+# start = (1, 2)
+# TIME = 2
 
-if bfs(grid, start, TIME):
-    print(f"There exists a valid endpoint within {TIME} steps and in bomb range")
-else:
-    print(f"No valid endpoint found within {TIME} steps and in bomb range")
+# if bfs(grid, start, TIME):
+#     print(f"There exists a valid endpoint within {TIME} steps and in bomb range")
+# else:
+#     print(f"No valid endpoint found within {TIME} steps and in bomb range")
 
+import numpy as np
+explosion_map_0 = np.zeros(5)
+explosion_map_0[1] = 1
+explosion_map_0[3] = 2
+
+explosion_map = explosion_map_0.copy()
+explosion_map[explosion_map > 0] -= 6
+print(explosion_map_0)
+print(explosion_map)

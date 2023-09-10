@@ -10,8 +10,8 @@ import agents
 import main
 import math
 from RuleBasedAgent import RuleBasedAgent
-from Features import state_to_features
-from Features import FEATURE_DIM
+from GetFeatures import state_to_features
+from GetFeatures import FEATURE_DIM
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
@@ -25,7 +25,7 @@ def fromStateToObservation_old(game_state):
         one_array = np.ones(s.COLS * s.ROWS)
         
         # 0: ston walls, 1: free tiles, 2: crates, 
-        observation = game_state["field"].astype(np.uint8) + 1
+        observation = game_state["field"].copy().astype(np.uint8) + 1
         #3: coins,
         for coin in game_state["coins"]:
             observation[coin] = 3
@@ -45,9 +45,9 @@ def fromStateToObservation_old(game_state):
                 observation[game_state["self"][3]] = 8 #8: self with bomb on top
 
         # 9~9+s.EXPLOSION_TIMER: explosion map
-        explosion_map = game_state["explosion_map"].astype(np.uint8)
+        explosion_map = game_state["explosion_map"].copy().astype(np.uint8)
         # Replace elements in observation with corresponding elements+9 from explosion_map if explosion_map elements are non-zero
-        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 9
+        observation[explosion_map != 0] = explosion_map[explosion_map != 0] + 9 # is it correct?
         
         # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
         for coin in game_state["coins"]:
@@ -153,9 +153,9 @@ class CustomEnv(gym.Env):
                 if agent.score > self.deep_agent.score:
                     deep_agent_win = False
             
-            reward = 0
+            reward = self.deep_agent.score * 100
             if deep_agent_win:
-                reward = 10000
+                reward += 10000
 
             return observation, reward, terminated, truncated, {}
         
@@ -190,7 +190,7 @@ class CustomEnv(gym.Env):
             
             # escape from explosion reward
             escape_bomb_reward = 0
-            field = game_state["field"]
+            field = game_state["field"].copy()
             if len(self.trajectory) > 0:
                 x, y = self.trajectory[-1] # last position
                 x_now, y_now = current_pos

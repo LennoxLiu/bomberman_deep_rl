@@ -3,6 +3,8 @@ import settings as s
 import numpy as np
 from CustomEnv import in_bomb_range
 
+INF = s.COLS*s.ROWS
+
 class GetFeatures():
         
         def __init__(self):
@@ -17,7 +19,7 @@ class GetFeatures():
         def get_valid_actions(self, game_state):
             _, score, bombs_left, (x, y) = game_state['self']
             bomb_xys = [xy for (xy, t) in game_state['bombs']]
-            arena = game_state['field']
+            arena = game_state['field'].copy()
             others = [xy for (n, s, b, xy) in game_state['others']]
             
              # Check which moves make sense at all
@@ -44,7 +46,7 @@ class GetFeatures():
         
         # find the shortest path between two points(coinsider wall, crates)
         # only pass at 0 in grid
-        # return the length of path, return np.inf if no path
+        # return the length of path, return INF if no path
         def find_shortest_path(self, grid, start, end):
             def neighbors(node):
                 x, y = node
@@ -55,7 +57,7 @@ class GetFeatures():
             rows, cols = len(grid), len(grid[0])
             
             if not (0 <= end[0] < rows) or not (0 <= end[1] < cols):
-                return np.inf  # If end point is out of bounds or not a valid tile
+                return INF  # If end point is out of bounds or not a valid tile
 
             while queue:
                 node, distance = queue.popleft()
@@ -70,7 +72,7 @@ class GetFeatures():
                     if 0 <= x < rows and 0 <= y < cols and neighbor not in visited and grid[x][y] == 0:
                         queue.append((neighbor, distance + 1))
 
-            return np.inf  # If no path is found
+            return INF  # If no path is found
 
 
         def get_distances_directions(self, grid, current_pos, target_pos_list):
@@ -86,10 +88,10 @@ class GetFeatures():
             closest_targets = [pair[0] for pair in sorted_combined][:3] # only take the closest 3 targets
             
             while closest_targets < 3: # padding to 3 items
-                closest_targets.append((np.inf,np.inf))
+                closest_targets.append((INF,INF))
 
             target_distances_directions = np.zeros((4,3))
-            target_distances_directions.fill(np.inf)
+            target_distances_directions.fill(INF)
 
             # ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
             neighbours = [(x_now, y_now-1),(x_now, y_now+1), (x_now-1, y_now), (x_now+1, y_now)]
@@ -161,7 +163,7 @@ class GetFeatures():
             highest_opponent_score = 0
             for op in game_state["others"]:
                 if op[1] > highest_opponent_score:
-                    highest_opponent_score = op[1]
+                    highest_opponent_score = op[1].copy()
             features.append(highest_opponent_score)
 
             # add ratio of self score and highest opponent score
@@ -179,7 +181,7 @@ class GetFeatures():
                                                            (x_now,y_now), game_state["coins"]))
 
             # get nearest 3 opponents
-            grid = game_state['field']
+            grid = game_state['field'].copy()
             for bomb in game_state["bombs"]:
                 grid[bomb[0]] = -1 # cannot pass through bomb
             grid[game_state['explosion_map'] > 0] = -1 # should not pass through explosion
@@ -233,5 +235,26 @@ class GetFeatures():
             # consider multiple bombs, check if in_bomb_range
             escape = np.zeros(4)
             # first unite explosion_map and bomb, 
-            # then find path to escape and return shorest length of path at each direction
+            # then find path to escape and return shortest length of path at each direction
+            # or return one-hot coding for shortest
+            grid_list = []
+            field_0 = game_state["field"].copy()
+            explosion_map_0 = game_state["explosion_map"].copy()
+            
+            for i in range(s.BOMB_TIMER + 1):
+                for bomb in game_state["bombs"]:
+                    field = field_0.copy()
+                    if bomb[1] - i > 0:
+                        field[bomb[0]] = 1 # cannot pass through bomb (0 is the only valid path)
+                    
+                    # add step 0 explosion
+                    explosion_map = explosion_map_0.copy()
+                    explosion_map[explosion_map > 0] -= i
 
+                    # add future explosion
+                    for exp in self.world.explosions:
+                        if exp.is_dangerous():
+                            for (x, y) in exp.blast_coords:
+                                explosion_map[x, y] = max(explosion_map[x, y], exp.timer - 1)
+
+                    grid_list.append(field + explosion_map)
