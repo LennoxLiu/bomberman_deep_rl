@@ -417,7 +417,7 @@ class BombeRLeWorld(GenericWorld):
         for exp in self.explosions:
             if exp.is_dangerous():
                 for (x, y) in exp.blast_coords:
-                    explosion_map[x, y] = max(explosion_map[x, y], exp.timer - 1)
+                    explosion_map[x, y] = max(explosion_map[x, y], exp.timer - 1) # why exp.timer -1
         state['explosion_map'] = explosion_map
 
         return state

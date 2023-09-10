@@ -1,7 +1,7 @@
 from collections import deque
 import settings as s
 import numpy as np
-from CustomEnv import in_bomb_range
+from CustomEnv import in_bomb_range, get_blast_coords
 
 INF = s.COLS*s.ROWS
 
@@ -252,9 +252,11 @@ class GetFeatures():
                     explosion_map[explosion_map > 0] -= i
 
                     # add future explosion
-                    for exp in self.world.explosions:
-                        if exp.is_dangerous():
-                            for (x, y) in exp.blast_coords:
-                                explosion_map[x, y] = max(explosion_map[x, y], exp.timer - 1)
+                    for bomb in game_state["bombs"]:
+                        blast_coords = []
+                        if bomb[1] - i <= 0:
+                            blast_coords = get_blast_coords(field_0, bomb[0][0], bomb[0][1])
+                        for (x, y) in blast_coords:
+                            explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # exp.timer - 1
 
-                    grid_list.append(field + explosion_map)
+                grid_list.append(field + explosion_map)

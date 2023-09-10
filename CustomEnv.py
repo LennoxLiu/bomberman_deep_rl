@@ -64,21 +64,34 @@ def fromStateToObservation_old(game_state):
         return observation
 
 
+def get_blast_coords(arena, bomb_x, bomb_y):
+        x = bomb_x
+        y = bomb_y
+        blast_coords = [(x, y)]
+
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x + i, y] == -1:
+                break
+            blast_coords.append((x + i, y))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x - i, y] == -1:
+                break
+            blast_coords.append((x - i, y))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x, y + i] == -1:
+                break
+            blast_coords.append((x, y + i))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x, y - i] == -1:
+                break
+            blast_coords.append((x, y - i))
+
+        return [(int(item[0]),int(item[1])) for item in blast_coords]
+
+
 def in_bomb_range(field,bomb_x,bomb_y,x,y):
-            is_in_bomb_range_x = False
-            is_in_bomb_range_y = False
-            if (bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER):
-                is_in_bomb_range_x = True
-                for y_temp in range(min(y,bomb_y),max(y,bomb_y)):
-                    if field[x][y_temp] == -1:
-                        is_in_bomb_range_x = False
-            
-            if (bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER):
-                is_in_bomb_range_y = True
-                for x_temp in range(min(x,bomb_x),max(x,bomb_x)):
-                    if field[x_temp][y] == -1:
-                        is_in_bomb_range_y = False
-            return is_in_bomb_range_x or is_in_bomb_range_y
+    blast_coords = get_blast_coords(field,bomb_x,bomb_y)
+    return (int(x),int(y)) in blast_coords
 
 
 class CustomEnv(gym.Env):
