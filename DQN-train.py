@@ -73,7 +73,7 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=64),
+        features_extractor_kwargs=dict(features_dim=32),
         net_arch=[32, 16]
     )
 

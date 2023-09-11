@@ -34,7 +34,7 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
 
 
 INF = s.COLS + s.ROWS
-FEATURE_DIM = 31
+FEATURE_DIM = 27
 
 class GetFeatures():
         
