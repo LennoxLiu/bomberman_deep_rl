@@ -75,18 +75,18 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=128),
-        net_arch=[64, 32, 16]
+        features_extractor_kwargs=dict(features_dim=64),
+        net_arch=[32, 16]
     )
 
     model = DQN("MlpPolicy", env_vec, learning_starts=0,
-                device="cpu",
+                device="auto",
                 batch_size = 64,
                 tau = 0.8, #0.8
                 gamma = 0.1, #0.1 training by rule_based_agent, only need immediate reward
-                learning_rate = 0.0003,#0.0003
+                learning_rate = 0.0001,#0.0003
                 target_update_interval= 10240,
-                exploration_fraction=0.99,
+                exploration_fraction=0.9,
                 exploration_initial_eps = 0.9,
                 exploration_final_eps = 0.1,
                 stats_window_size= 100,
