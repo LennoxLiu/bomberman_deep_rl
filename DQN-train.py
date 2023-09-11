@@ -41,17 +41,17 @@ class CustomMLP(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: spaces.Box, features_dim: int = 256):
+    def __init__(self, observation_space: spaces.Box, features_dim: int = 128):
         super().__init__(observation_space, features_dim)
         # We assume CxHxW images (channels first)
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 32),
-            nn.BatchNorm1d(32),
+            nn.Linear(n_input_channels, 64),
+            nn.BatchNorm1d(64),
             nn.ReLU(),
             
-            nn.Linear(32, features_dim),
+            nn.Linear(64, features_dim),
             nn.BatchNorm1d(features_dim),
             nn.ReLU(),
             
@@ -75,8 +75,8 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=64),
-        net_arch=[32, 16]
+        features_extractor_kwargs=dict(features_dim=128),
+        net_arch=[64, 32, 16]
     )
 
     model = DQN("MlpPolicy", env_vec, learning_starts=0,

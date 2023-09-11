@@ -10,15 +10,17 @@ import agents
 import main
 import math
 from RuleBasedAgent import RuleBasedAgent
-from GetFeatures import GetFeatures
-from GetFeatures import FEATURE_DIM
+from GetFeatures import GetFeatures, in_bomb_range
+from GetFeatures import FEATURE_DIM,INF
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
-def fromStateToObservation(get_feature: GetFeatures,game_state):
-    features = get_feature.state_to_features(game_state).astype(np.float16)
-    print(len(features))
-    assert Box(low=-np.inf,high = np.inf, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
+
+def fromStateToObservation(get_feature_class: GetFeatures, game_state):
+    features = get_feature_class.state_to_features(game_state)
+    # print(len(features))
+    assert Box(low=0,high = INF, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     return features
+
 
 def fromStateToObservation_old(game_state):
         one_array = np.ones(s.COLS * s.ROWS)
@@ -63,36 +65,6 @@ def fromStateToObservation_old(game_state):
         return observation
 
 
-def get_blast_coords(arena, bomb_x, bomb_y):
-        x = bomb_x
-        y = bomb_y
-        blast_coords = [(x, y)]
-
-        for i in range(1, s.BOMB_POWER + 1):
-            if arena[x + i, y] == -1:
-                break
-            blast_coords.append((x + i, y))
-        for i in range(1, s.BOMB_POWER + 1):
-            if arena[x - i, y] == -1:
-                break
-            blast_coords.append((x - i, y))
-        for i in range(1, s.BOMB_POWER + 1):
-            if arena[x, y + i] == -1:
-                break
-            blast_coords.append((x, y + i))
-        for i in range(1, s.BOMB_POWER + 1):
-            if arena[x, y - i] == -1:
-                break
-            blast_coords.append((x, y - i))
-
-        return [(int(item[0]),int(item[1])) for item in blast_coords]
-
-
-def in_bomb_range(field,bomb_x,bomb_y,x,y):
-    blast_coords = get_blast_coords(field,bomb_x,bomb_y)
-    return (int(x),int(y)) in blast_coords
-
-
 class CustomEnv(gym.Env):
     """Custom Environment that follows gym interface."""
 
@@ -105,6 +77,7 @@ class CustomEnv(gym.Env):
         self.metadata = options
         self.trajectory = []
         self.rule_based_agent = RuleBasedAgent()
+        self.get_feature_class = GetFeatures()
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
@@ -157,7 +130,7 @@ class CustomEnv(gym.Env):
         game_state = self.world.get_state_for_agent(self.deep_agent)
         if game_state == None: # the agent is dead
             truncated = True
-            observation = fromStateToObservation(self.deep_agent.last_game_state)
+            observation = fromStateToObservation(self.get_feature_class, self.deep_agent.last_game_state)
             
             # check if our agent wins
             deep_agent_win = True
@@ -172,7 +145,7 @@ class CustomEnv(gym.Env):
             return observation, reward, terminated, truncated, {}
         
         else: # our agent is still alive
-            observation = fromStateToObservation(game_state)
+            observation = fromStateToObservation(self.get_feature_class, game_state)
 
         # terminated or trunctated
         if self.world.running == False:
@@ -352,13 +325,14 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed) # following documentation
         
         self.trajectory = []
+        self.get_feature_class.reset()
 
         # start a new round
         self.world.new_round()
 
         # Get first observation
         game_state = self.world.get_state_for_agent(self.deep_agent)
-        observation = fromStateToObservation(game_state)
+        observation = fromStateToObservation(self.get_feature_class, game_state)
         return observation, {"info": "reset"}
     
 

@@ -129,12 +129,31 @@
 # else:
 #     print(f"No valid endpoint found within {TIME} steps and in bomb range")
 
-import numpy as np
-explosion_map_0 = np.zeros(5)
-explosion_map_0[1] = 1
-explosion_map_0[3] = 2
+# import numpy as np
+# explosion_map_0 = np.zeros(5)
+# explosion_map_0[1] = 1
+# explosion_map_0[3] = 2
 
-explosion_map = explosion_map_0.copy()
-explosion_map[explosion_map > 0] -= 6
-print(explosion_map_0)
-print(explosion_map)
+# explosion_map = explosion_map_0.copy()
+# explosion_map[explosion_map > 0] -= 6
+# print(explosion_map_0)
+# print(explosion_map)
+
+import numpy as np
+# eye = np.eye(3,5)
+# print(eye)
+# print(len(eye == 1))
+
+nested_list = [[1, 2, 3], [4, [5.1, 5.2], 6], [7, 8, 9]]
+# flatten_list = [item for sublist in nested_list for item in sublist]
+def flatten_list(lst):
+                flattened_list = []
+                for item in lst:
+                    if isinstance(item, list):
+                        flattened_list.extend(flatten_list(item))
+                    else:
+                        flattened_list.append(item)
+                return flattened_list
+
+flatten = flatten_list(nested_list)
+print(flatten)

@@ -1,10 +1,40 @@
 from collections import deque
 import settings as s
 import numpy as np
-from CustomEnv import in_bomb_range, get_blast_coords
+
+def get_blast_coords(arena, bomb_x, bomb_y):
+        x = bomb_x
+        y = bomb_y
+        blast_coords = [(x, y)]
+
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x + i, y] == -1:
+                break
+            blast_coords.append((x + i, y))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x - i, y] == -1:
+                break
+            blast_coords.append((x - i, y))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x, y + i] == -1:
+                break
+            blast_coords.append((x, y + i))
+        for i in range(1, s.BOMB_POWER + 1):
+            if arena[x, y - i] == -1:
+                break
+            blast_coords.append((x, y - i))
+
+        return [(int(item[0]),int(item[1])) for item in blast_coords]
+
+
+def in_bomb_range(field,bomb_x,bomb_y,x,y):
+    blast_coords = get_blast_coords(field,bomb_x,bomb_y)
+    return (int(x),int(y)) in blast_coords
+
+
 
 INF = s.COLS*s.ROWS
-FEATURE_DIM = 65
+FEATURE_DIM = 66
 
 class GetFeatures():
         
@@ -88,7 +118,7 @@ class GetFeatures():
             # Extract the first list from the sorted pairs
             closest_targets = [pair[0] for pair in sorted_combined][:3] # only take the closest 3 targets
             
-            while closest_targets < 3: # padding to 3 items
+            while len(closest_targets) < 3: # padding to 3 items
                 closest_targets.append((INF,INF))
 
             target_distances_directions = np.zeros((4,3))
@@ -142,7 +172,7 @@ class GetFeatures():
                     self.coins.append(coin)
 
             # get crates cnt
-            crates_cnt = int(sum(row.count(1) for row in game_state["field"]))
+            crates_cnt = len(game_state["field"] == 1) # count number of crates
             # get undiscovered coins cnt
             TOTAL_COINS = s.SCENARIOS["classic"]["COIN_COUNT"]
             undiscovered_coins_cnt = TOTAL_COINS - len(self.coins)
@@ -164,7 +194,7 @@ class GetFeatures():
             highest_opponent_score = 0
             for op in game_state["others"]:
                 if op[1] > highest_opponent_score:
-                    highest_opponent_score = op[1].copy()
+                    highest_opponent_score = op[1]
             features.append(highest_opponent_score)
 
             # add ratio of self score and highest opponent score
@@ -209,7 +239,7 @@ class GetFeatures():
 
             # add whether to drop bomb, 0 means impossible to drop or will kill ourself
             can_drop_bomb = 0
-            if bombs_left and self.can_escape(game_state["field"],x_now,y_now):
+            if bombs_left and self.can_escape(game_state["field"],(x_now,y_now)):
                 can_drop_bomb = 1
             features.append(can_drop_bomb) # dim = 1
 
@@ -245,22 +275,23 @@ class GetFeatures():
             explosion_map_0 = game_state["explosion_map"].copy()
             
             for i in range(s.BOMB_TIMER + 1):
+                field = field_0.copy()
+
                 for bomb in game_state["bombs"]:
-                    field = field_0.copy()
                     if bomb[1] - i > 0:
                         field[bomb[0]] = 1 # cannot pass through bomb (0 is the only valid path)
                     
-                    # add step 0 explosion
-                    explosion_map = explosion_map_0.copy()
-                    explosion_map[explosion_map > 0] -= i
+                # add step 0 explosion
+                explosion_map = explosion_map_0.copy()
+                explosion_map[explosion_map > 0] -= i
 
-                    # add future explosion
-                    for bomb in game_state["bombs"]:
-                        blast_coords = []
-                        if bomb[1] - i <= 0:
-                            blast_coords = get_blast_coords(field_0, bomb[0][0], bomb[0][1])
-                        for (x, y) in blast_coords:
-                            explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # the origianl code is exp.timer - 1, so here is a -1
+                # add future explosion
+                for bomb in game_state["bombs"]:
+                    blast_coords = []
+                    if bomb[1] - i <= 0:
+                        blast_coords = get_blast_coords(field_0, bomb[0][0], bomb[0][1])
+                    for (x, y) in blast_coords:
+                        explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # the origianl code is exp.timer - 1, so here is a -1
 
                 grid_list.append(field + explosion_map)
 
@@ -307,4 +338,19 @@ class GetFeatures():
             # add directions to escape from explosions
             features.append(escape) # dim = 4
 
-            return features
+            # flatten features and convert it to np.array
+            def flatten_list(lst):
+                flattened_list = []
+                for item in lst:
+                    if isinstance(item, list):
+                        flattened_list.extend(flatten_list(item))
+                    elif isinstance(item, np.ndarray):
+                        flattened_list.extend(item.flatten())
+                    else:
+                        flattened_list.append(item)
+                return flattened_list
+            
+            return np.array(flatten_list(features), dtype = np.float16)
+    
+        def reset(self):
+            self.coins = []
