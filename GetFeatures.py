@@ -134,6 +134,7 @@ class GetFeatures():
                     target_distances_directions[i,j] = self.find_shortest_path(grid,
                                                                              neighbours[i], closest_targets[j] )
             
+            target_distances_directions /= INF # scale to [0,1]
             return target_distances_directions.flatten()
 
         # return true if there exist a path that can escape from current bomb
@@ -337,6 +338,7 @@ class GetFeatures():
             neighbours = [(x_now, y_now-1),(x_now, y_now+1), (x_now-1, y_now), (x_now+1, y_now)]
             for i in range(len(neighbours)):
                 escape[i] = find_shortest_escape_path(grid_list, neighbours[i])
+            escape /= INF # scale to [0,1]
             # add directions to escape from explosions
             features.append(escape) # dim = 4
 

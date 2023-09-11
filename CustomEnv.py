@@ -17,7 +17,7 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(get_feature_class: GetFeatures, game_state):
     features = get_feature_class.state_to_features(game_state)
-    print(len(features))
+    # print(len(features))
     assert Box(low=0,high = INF, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     return features
 
