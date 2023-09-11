@@ -47,12 +47,10 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 64),
-            nn.BatchNorm1d(64),
+            nn.Linear(n_input_channels, 32),
             nn.ReLU(),
             
-            nn.Linear(64, features_dim),
-            nn.BatchNorm1d(features_dim),
+            nn.Linear(32, features_dim),
             nn.ReLU(),
             
         )
@@ -80,12 +78,12 @@ if __name__ == '__main__':
     )
 
     model = DQN("MlpPolicy", env_vec, learning_starts=0,
-                device="auto",
+                device="cpu",
                 batch_size = 64,
                 tau = 0.8, #0.8
                 gamma = 0.1, #0.1 training by rule_based_agent, only need immediate reward
-                learning_rate = 0.0003,#0.0003
-                target_update_interval= 10240,
+                learning_rate = 0.0001,#0.0003
+                target_update_interval= 5120,
                 exploration_fraction=0.9,
                 exploration_initial_eps = 0.9,
                 exploration_final_eps = 0.1,
