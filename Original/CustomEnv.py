@@ -89,7 +89,7 @@ class CustomEnv(gym.Env):
                 # 9~9+s.EXPLOSION_TIMER: explosion map
                 # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
                 # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
-        self.observation_space = Box(low=-np.inf,high = np.inf, shape=(FEATURE_DIM,), dtype = np.float16)
+        self.observation_space = Box(low=0,high = INF, shape=(FEATURE_DIM,), dtype = np.float16)
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
@@ -138,9 +138,10 @@ class CustomEnv(gym.Env):
                 if agent.score > self.deep_agent.score:
                     deep_agent_win = False
             
-            reward = self.deep_agent.score * 100
-            if deep_agent_win:
-                reward += 10000
+            reward = 0
+            # reward += self.deep_agent.score * 100
+            # if deep_agent_win:
+            #     reward += 10000
 
             return observation, reward, terminated, truncated, {}
         

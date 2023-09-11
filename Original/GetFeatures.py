@@ -33,8 +33,8 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
 
 
 
-INF = s.COLS*s.ROWS
-FEATURE_DIM = 66
+INF = s.COLS + s.ROWS
+FEATURE_DIM = 42
 
 class GetFeatures():
         
@@ -70,14 +70,13 @@ class GetFeatures():
             if (x - 1, y) in valid_tiles: valid_actions[2] = 1
             if (x + 1, y) in valid_tiles: valid_actions[3] = 1
             if (x, y) in valid_tiles: valid_actions[4] = 1
-            # Disallow the BOMB action if agent dropped a bomb in the same spot recently
             if (bombs_left > 0) : valid_actions[5] = 1
 
             return valid_actions
         
         # find the shortest path between two points(coinsider wall, crates)
         # only pass at 0 in grid
-        # return the length of path, return INF if no path
+        # return the length of path when length < INF, return INF if no path
         def find_shortest_path(self, grid, start, end):
             def neighbors(node):
                 x, y = node
@@ -100,7 +99,10 @@ class GetFeatures():
 
                 for neighbor in neighbors(node):
                     x, y = neighbor
-                    if 0 <= x < rows and 0 <= y < cols and neighbor not in visited and grid[x][y] == 0:
+                    if 0 <= x < rows and 0 <= y < cols \
+                        and distance + 1 <= INF \
+                        and neighbor not in visited \
+                        and grid[x][y] == 0:
                         queue.append((neighbor, distance + 1))
 
             return INF  # If no path is found
@@ -254,13 +256,13 @@ class GetFeatures():
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
             # add nearest 3 crates
-            features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos)) # dim = 12
+            # features.append(self.get_distances_directions(game_state["field"],
+            #                                                (x_now,y_now), crates_pos)) # dim = 12
             
             # add nearest 3 bombs
-            bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
-            features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), bombs_pos)) # dim = 12
+            # bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
+            # features.append(self.get_distances_directions(game_state["field"],
+            #                                                (x_now,y_now), bombs_pos)) # dim = 12
 
             # add directions to escape from bombs
             # consider multiple bombs, check if in_bomb_range
