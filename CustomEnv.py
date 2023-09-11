@@ -10,14 +10,13 @@ import agents
 import main
 import math
 from RuleBasedAgent import RuleBasedAgent
-from GetFeatures import state_to_features
+from GetFeatures import GetFeatures
 from GetFeatures import FEATURE_DIM
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
-def fromStateToObservation(game_state):
-    features = state_to_features(game_state).astype(np.float16)
-    # print(len(features))
-    # print(features)
+def fromStateToObservation(get_feature: GetFeatures,game_state):
+    features = get_feature.state_to_features(game_state).astype(np.float16)
+    print(len(features))
     assert Box(low=-np.inf,high = np.inf, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     return features
 
@@ -109,7 +108,7 @@ class CustomEnv(gym.Env):
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        one_array = np.ones(s.COLS * s.ROWS)
+        # one_array = np.ones(s.COLS * s.ROWS)
         # self.observation_space = Box(low = 0, high = 11 + s.EXPLOSION_TIMER*2 + s.BOMB_TIMER, shape=(s.COLS* s.ROWS,), dtype = np.uint8)
                 # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
                 # 4: no bomb opponents, 5: has bomb opponents,
