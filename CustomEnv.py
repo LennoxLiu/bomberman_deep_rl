@@ -138,9 +138,10 @@ class CustomEnv(gym.Env):
                 if agent.score > self.deep_agent.score:
                     deep_agent_win = False
             
-            reward = self.deep_agent.score * 100
-            if deep_agent_win:
-                reward += 10000
+            reward = 0
+            # reward += self.deep_agent.score * 100
+            # if deep_agent_win:
+            #     reward += 10000
 
             return observation, reward, terminated, truncated, {}
         
