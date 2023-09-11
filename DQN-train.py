@@ -84,7 +84,7 @@ if __name__ == '__main__':
                 gamma = 0.1, #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0001,#0.0003
                 target_update_interval= 5120,
-                exploration_fraction=0.9,
+                exploration_fraction=0.99,
                 exploration_initial_eps = 0.9,
                 exploration_final_eps = 0.1,
                 stats_window_size= 100,

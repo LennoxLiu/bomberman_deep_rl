@@ -209,9 +209,9 @@ class GetFeatures():
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 2 coin distances after action, consider wall and crates
+            # add nearest 1 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],2)) # dim = 12
+                                                           (x_now,y_now), game_state["coins"],1))
 
             # get nearest 1 opponent
             grid = game_state['field'].copy()
@@ -221,7 +221,7 @@ class GetFeatures():
             opponent_pos = [op[3] for op in game_state["others"]]
             # add sorted opponent distance, consider wall, crates, bombs, explosion
             features.append(self.get_distances_directions(grid,
-                                                           (x_now,y_now), opponent_pos,1)) # dim = 12
+                                                           (x_now,y_now), opponent_pos,1))
             
             # if place bomb at current position, hom many crates can be exploded
             bomb_crates_cnt = 0
