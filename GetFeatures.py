@@ -2,6 +2,9 @@ from collections import deque
 import settings as s
 import numpy as np
 
+INF = s.COLS + s.ROWS
+FEATURE_DIM = 64
+
 def get_blast_coords(arena, bomb_x, bomb_y):
         x = bomb_x
         y = bomb_y
@@ -31,10 +34,6 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
     blast_coords = get_blast_coords(field,bomb_x,bomb_y)
     return (int(x),int(y)) in blast_coords
 
-
-
-INF = s.COLS + s.ROWS
-FEATURE_DIM = 27
 
 class GetFeatures():
         
@@ -191,30 +190,31 @@ class GetFeatures():
 
             # add self score
             self_score = game_state["self"][1]
-            # features.append(self_score)
+            TOTAL_SCORE = TOTAL_COINS * s.REWARD_COIN + 3 * s.REWARD_KILL
+            features.append(self_score / TOTAL_SCORE) # scale to 1
 
             # add highest opponent score
             highest_opponent_score = 0
             for op in game_state["others"]:
                 if op[1] > highest_opponent_score:
                     highest_opponent_score = op[1]
-            # features.append(highest_opponent_score)
+            features.append(highest_opponent_score / TOTAL_SCORE) # scale to 1
 
             # add ratio of self score and highest opponent score
-            score_ratio = 1
-            if highest_opponent_score != 0:
-                score_ratio = self_score / highest_opponent_score
-            features.append(score_ratio)
+            # score_ratio = 1
+            # if highest_opponent_score != 0:
+            #     score_ratio = self_score / highest_opponent_score
+            # features.append(score_ratio)
             
             # add valid actions(consider crates, wall, bombs)
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 1 coin distances after action, consider wall and crates
+            # add nearest 3 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],1))
+                                                           (x_now,y_now), game_state["coins"],3))
 
-            # get nearest 1 opponent
+            # get nearest 3 opponent
             grid = game_state['field'].copy()
             for bomb in game_state["bombs"]:
                 grid[bomb[0]] = -1 # cannot pass through bomb
@@ -222,7 +222,7 @@ class GetFeatures():
             opponent_pos = [op[3] for op in game_state["others"]]
             # add sorted opponent distance, consider wall, crates, bombs, explosion
             features.append(self.get_distances_directions(grid,
-                                                           (x_now,y_now), opponent_pos,1))
+                                                           (x_now,y_now), opponent_pos,3))
             
             # if place bomb at current position, hom many crates can be exploded
             bomb_crates_cnt = 0
@@ -235,10 +235,10 @@ class GetFeatures():
                     bomb_crates_cnt += 1
                 if x_now - i >= 0 and game_state["field"][x_now - i, y_now] == 1: # 1 for crates
                     bomb_crates_cnt += 1
-            features.append(bomb_crates_cnt) # dim = 1
+            features.append(bomb_crates_cnt / (s.BOMB_POWER* 4) ) # dim = 1, scale to [0,1]
 
             # add expected revaled coins if placing bomb at current position
-            features.append(bomb_crates_cnt * expected_coins_per_crate) # dim = 1
+            features.append(bomb_crates_cnt / (s.BOMB_POWER* 4) * expected_coins_per_crate) # dim = 1
 
             # add whether to drop bomb, 0 means impossible to drop or will kill ourself
             can_drop_bomb = 0
@@ -246,7 +246,7 @@ class GetFeatures():
                 can_drop_bomb = 1
             features.append(can_drop_bomb) # dim = 1
 
-            # get nearest 1 crates
+            # get nearest 3 crates
             def find_indices_of_value(arr, value):
                 indices = []
                 for i, row in enumerate(arr):
@@ -258,12 +258,12 @@ class GetFeatures():
             crates_pos = find_indices_of_value(game_state["field"], 1)
             # add nearest 1 crates
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 1)) # dim = 12
+                                                           (x_now,y_now), crates_pos, 3)) # dim = 12
             
             # add nearest 3 bombs
-            # bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
-            # features.append(self.get_distances_directions(game_state["field"],
-            #                                                (x_now,y_now), bombs_pos)) # dim = 12
+            bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
+            features.append(self.get_distances_directions(game_state["field"],
+                                                           (x_now,y_now), bombs_pos, 3)) # dim = 12
 
             # add directions to escape from bombs
             # consider multiple bombs, check if in_bomb_range

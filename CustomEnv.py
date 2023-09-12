@@ -18,7 +18,7 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 def fromStateToObservation(get_feature_class: GetFeatures, game_state):
     features = get_feature_class.state_to_features(game_state)
     # print(len(features))
-    assert Box(low=0,high = INF, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
+    assert Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     return features
 
 
@@ -89,7 +89,7 @@ class CustomEnv(gym.Env):
                 # 9~9+s.EXPLOSION_TIMER: explosion map
                 # 10+s.EXPLOSION_TIMER~ 10+s.EXPLOSION_TIMER*2: explosion on coin
                 # 11+s.EXPLOSION_TIMER*2 ~ 11+s.EXPLOSION_TIMER*2+ s.BOMB_TIMER: bomb map
-        self.observation_space = Box(low=0,high = INF, shape=(FEATURE_DIM,), dtype = np.float16)
+        self.observation_space = Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16)
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
