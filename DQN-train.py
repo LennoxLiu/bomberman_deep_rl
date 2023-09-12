@@ -78,7 +78,7 @@ if __name__ == '__main__':
     )
 
     model = DQN("MlpPolicy", env_vec, learning_starts=0,
-                device="cpu",
+                device="auto",
                 batch_size = 64,
                 tau = 0.8, #0.8
                 gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
