@@ -67,13 +67,13 @@ if __name__ == '__main__':
             "enable_rule_based_agent_reward": True}
 
     env = CustomEnv(options = option)
-    env_vec = make_vec_env(CustomEnv,n_envs=4,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
+    env_vec = make_vec_env(CustomEnv,n_envs=1,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
     # envs = [CustomEnv(option) for _ in range(16)]
     # env_vec = SubprocVecEnv(envs)
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=64),
+        features_extractor_kwargs=dict(features_dim=128),
         net_arch=[64, 32]
     )
 
@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 device="cpu",
                 batch_size = 64,
                 tau = 0.8, #0.8
-                gamma = 0.1, #0.1 training by rule_based_agent, only need immediate reward
+                gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0001,#0.0003
                 target_update_interval= 5120,
                 exploration_fraction=0.99,
@@ -112,11 +112,11 @@ if __name__ == '__main__':
     #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
     new_parameters = {
-        "learning_rate": 0.0003,
+        "learning_rate": 0.0001,
         "target_update_interval": 10240, # more n_steps means more robust, less tuned
         "batch_size": 64,
         "tau": 0.8,#0.05,
-        "gamma": 0.1,
+        "gamma": 0.5,
         "exploration_fraction": 0.5,
         "exploration_initial_eps": 0.9,
         "exploration_final_eps":0.1,
