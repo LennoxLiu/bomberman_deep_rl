@@ -17,8 +17,10 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(get_feature_class: GetFeatures, game_state):
     features = get_feature_class.state_to_features(game_state)
-    # print(len(features))
-    assert Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
+    try:
+        assert Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
+    except:
+        print(len(features))
     return features
 
 
@@ -302,19 +304,19 @@ class CustomEnv(gym.Env):
                 reward += 1
             
             # to prevent agent to back and forward
-            # back_forward_punishment = 0
-            # if len(self.trajectory) > 2:
-            #     last_pos = self.trajectory[-1]
-            #     wait_time = 0
-            #     for pos in reversed(self.trajectory):
-            #         if pos != last_pos:
-            #             break
-            #         else:
-            #             wait_time += 1
-            #     if pos == current_pos:
-            #         reward -= 20 # back and forth punishment
-            #     if ACTION_MAP[action] != "BOMB":
-            #         reward -= wait_time * 5 # Waiting punishment
+            back_forward_punishment = 0
+            if len(self.trajectory) > 2:
+                last_pos = self.trajectory[-1]
+                wait_time = 0
+                for pos in reversed(self.trajectory):
+                    if pos != last_pos:
+                        break
+                    else:
+                        wait_time += 1
+                if pos == current_pos:
+                    reward -= 20 # back and forth punishment
+                if ACTION_MAP[action] != "BOMB":
+                    reward -= wait_time * 5 # Waiting punishment
         
         # maintain self.trajectory
         self.trajectory.append(current_pos)

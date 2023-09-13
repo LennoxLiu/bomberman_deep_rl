@@ -3,7 +3,7 @@ import settings as s
 import numpy as np
 
 INF = s.COLS + s.ROWS
-FEATURE_DIM = 64
+FEATURE_DIM = 32
 
 def get_blast_coords(arena, bomb_x, bomb_y):
         x = bomb_x
@@ -210,11 +210,11 @@ class GetFeatures():
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 3 coin distances after action, consider wall and crates
+            # add nearest 1 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],3))
+                                                           (x_now,y_now), game_state["coins"],1))
 
-            # get nearest 3 opponent
+            # get nearest 1 opponent
             grid = game_state['field'].copy()
             for bomb in game_state["bombs"]:
                 grid[bomb[0]] = -1 # cannot pass through bomb
@@ -222,7 +222,7 @@ class GetFeatures():
             opponent_pos = [op[3] for op in game_state["others"]]
             # add sorted opponent distance, consider wall, crates, bombs, explosion
             features.append(self.get_distances_directions(grid,
-                                                           (x_now,y_now), opponent_pos,3))
+                                                           (x_now,y_now), opponent_pos,1))
             
             # if place bomb at current position, hom many crates can be exploded
             bomb_crates_cnt = 0
@@ -246,7 +246,7 @@ class GetFeatures():
                 can_drop_bomb = 1
             features.append(can_drop_bomb) # dim = 1
 
-            # get nearest 3 crates
+            # get nearest 1 crates
             def find_indices_of_value(arr, value):
                 indices = []
                 for i, row in enumerate(arr):
@@ -256,14 +256,14 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 1 crates
+            # add nearest 3 crates
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 3)) # dim = 12
+                                                           (x_now,y_now), crates_pos, 1)) # dim = 12
             
-            # add nearest 3 bombs
+            # add nearest 1 bombs
             bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), bombs_pos, 3)) # dim = 12
+                                                           (x_now,y_now), bombs_pos, 1)) # dim = 12
 
             # add directions to escape from bombs
             # consider multiple bombs, check if in_bomb_range
