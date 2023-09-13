@@ -81,7 +81,7 @@ if __name__ == '__main__':
                 device="auto",
                 batch_size = 64,
                 tau = 0.8, #0.8
-                gamma = 0.9, #0.1 training by rule_based_agent, only need immediate reward
+                gamma = 0.99, #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0003,#0.0003
                 target_update_interval= 10240,
                 exploration_fraction=0.9,
