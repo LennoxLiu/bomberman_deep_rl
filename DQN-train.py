@@ -73,8 +73,8 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=64),
-        net_arch=[64, 32]
+        features_extractor_kwargs=dict(features_dim=32),
+        net_arch=[32, 16]
     )
 
     model = DQN("MlpPolicy", env, learning_starts=0,
