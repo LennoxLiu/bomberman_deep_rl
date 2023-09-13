@@ -67,24 +67,24 @@ if __name__ == '__main__':
             "enable_rule_based_agent_reward": True}
 
     env = CustomEnv(options = option)
-    env_vec = make_vec_env(CustomEnv,n_envs=1,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
+    # env_vec = make_vec_env(CustomEnv,n_envs=1,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
     # envs = [CustomEnv(option) for _ in range(16)]
     # env_vec = SubprocVecEnv(envs)
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=128),
+        features_extractor_kwargs=dict(features_dim=64),
         net_arch=[64, 32]
     )
 
-    model = DQN("MlpPolicy", env_vec, learning_starts=0,
+    model = DQN("MlpPolicy", env, learning_starts=0,
                 device="auto",
                 batch_size = 64,
                 tau = 0.8, #0.8
-                gamma = 0.5, #0.1 training by rule_based_agent, only need immediate reward
-                learning_rate = 0.0001,#0.0003
-                target_update_interval= 5120,
-                exploration_fraction=0.99,
+                gamma = 0.9, #0.1 training by rule_based_agent, only need immediate reward
+                learning_rate = 0.0003,#0.0003
+                target_update_interval= 10240,
+                exploration_fraction=0.9,
                 exploration_initial_eps = 0.9,
                 exploration_final_eps = 0.1,
                 stats_window_size= 100,
@@ -122,7 +122,7 @@ if __name__ == '__main__':
         "exploration_final_eps":0.1,
         "stats_window_size": 100
         }
-    # model = DQN.load(model_path,env = env_vec, force_reset = True, custom_objects = new_parameters) 
+    # model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) 
     while True:
         model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
