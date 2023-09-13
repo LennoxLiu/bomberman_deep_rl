@@ -47,10 +47,10 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 64),
+            nn.Linear(n_input_channels, 32),
             nn.ReLU(),
             
-            nn.Linear(64, features_dim),
+            nn.Linear(32, features_dim),
             nn.ReLU(),
             
         )
