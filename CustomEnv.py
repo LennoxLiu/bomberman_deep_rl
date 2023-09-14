@@ -301,7 +301,7 @@ class CustomEnv(gym.Env):
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
                 if ACTION_MAP[action] == "BOMB":
-                    reward += 50 # extra reward for dropping right bomb
+                    reward += 10 # extra reward for dropping right bomb
             elif ACTION_MAP[action] != "WAIT" and ACTION_MAP[action]in valid_actions:
                 reward += 1
             
