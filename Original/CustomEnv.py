@@ -21,6 +21,7 @@ def fromStateToObservation(get_feature_class: GetFeatures, game_state):
         assert Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     except:
         print(len(features))
+        print(features)
     return features
 
 
@@ -301,7 +302,7 @@ class CustomEnv(gym.Env):
             if ACTION_MAP[action] == target_action:
                 reward += 100 #1000
                 if ACTION_MAP[action] == "BOMB":
-                    reward += 50 # extra reward for dropping right bomb
+                    reward += 10 # extra reward for dropping right bomb
             elif ACTION_MAP[action] != "WAIT" and ACTION_MAP[action]in valid_actions:
                 reward += 1
             
@@ -315,8 +316,8 @@ class CustomEnv(gym.Env):
                         break
                     else:
                         wait_time += 1
-                if pos == current_pos:
-                    reward -= 20 # back and forth punishment
+                if pos == current_pos and ACTION_MAP[action] != target_action:
+                    reward -= 10 # back and forth punishment
                 if ACTION_MAP[action] != "BOMB":
                     reward -= wait_time * 5 # Waiting punishment
         

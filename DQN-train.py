@@ -47,7 +47,10 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 32),
+            nn.Linear(n_input_channels, 64),
+            nn.ReLU(),
+
+            nn.Linear(64, 32),
             nn.ReLU(),
             
             nn.Linear(32, features_dim),
@@ -72,8 +75,8 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=64),
-        net_arch=[64, 32]
+        features_extractor_kwargs=dict(features_dim=16),
+        net_arch=[16, 16]
     )
 
     model = DQN("MlpPolicy", env, learning_starts=0,

@@ -21,6 +21,7 @@ def fromStateToObservation(get_feature_class: GetFeatures, game_state):
         assert Box(low = 0,high = 1, shape=(FEATURE_DIM,), dtype = np.float16).contains(features)
     except:
         print(len(features))
+        print(features)
     return features
 
 

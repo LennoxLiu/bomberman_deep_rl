@@ -3,7 +3,8 @@ import settings as s
 import numpy as np
 
 INF = s.COLS + s.ROWS
-FEATURE_DIM = 41
+FEATURE_DIM = 61
+TOTAL_COINS = s.SCENARIOS["loot-crate-6"]["COIN_COUNT"]
 
 def get_blast_coords(arena, bomb_x, bomb_y):
         x = bomb_x
@@ -109,8 +110,11 @@ class GetFeatures():
 
         def get_distances_directions(self, grid, current_pos, target_pos_list, size = 3):
             x_now, y_now = current_pos
-            target_distances = [self.find_shortest_path(grid, current_pos, pos) \
+            
+            # to save time, use manhattan distance for large number of targets
+            target_distances = [self.manhattan_distance(current_pos, pos) \
                                   for pos in target_pos_list]
+            
             combined = list(zip(target_pos_list, target_distances))
             
             # ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
@@ -177,12 +181,13 @@ class GetFeatures():
             # get crates cnt
             crates_cnt = len(game_state["field"] == 1) # count number of crates
             # get undiscovered coins cnt
-            TOTAL_COINS = s.SCENARIOS["classic"]["COIN_COUNT"]
             undiscovered_coins_cnt = TOTAL_COINS - len(self.coins)
             # add expected coins per crate
             expected_coins_per_crate = 0
             if crates_cnt > 0:
                 expected_coins_per_crate = undiscovered_coins_cnt / crates_cnt
+            if expected_coins_per_crate > 1:
+                expected_coins_per_crate = 1
             features.append(expected_coins_per_crate)
 
             # add remaining points
@@ -211,11 +216,11 @@ class GetFeatures():
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 1 coin distances after action, consider wall and crates
+            # add nearest 2 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],1))
+                                                           (x_now,y_now), game_state["coins"],2))
 
-            # get nearest 1 opponent
+            # get nearest 2 opponent
             grid = game_state['field'].copy()
             for bomb in game_state["bombs"]:
                 grid[bomb[0]] = -1 # cannot pass through bomb
@@ -223,7 +228,7 @@ class GetFeatures():
             opponent_pos = [op[3] for op in game_state["others"]]
             # add sorted opponent distance, consider wall, crates, bombs, explosion
             features.append(self.get_distances_directions(grid,
-                                                           (x_now,y_now), opponent_pos,1))
+                                                           (x_now,y_now), opponent_pos,2))
             
             # if place bomb at current position, hom many crates can be exploded
             def get_crates_cnt(grid, x_now,y_now):
@@ -247,7 +252,7 @@ class GetFeatures():
             features.append(np.array(crates_directions) / (s.BOMB_POWER* 4) ) # dim = 4, scale to [0,1]
 
             # add whether to drop bomb, 0 means impossible to drop or will kill ourself
-            drop_bomb_score = 0
+            
             can_drop_bomb = 0
             grid = game_state["field"].copy()
             grid[grid == 1] = -1 # use 1 to represent opponents
@@ -255,13 +260,15 @@ class GetFeatures():
                 grid[op[3]] = 1 # fake oppoenent as crate
             if bombs_left and self.can_escape(game_state["field"],(x_now,y_now)):
                 can_drop_bomb = 1
-                drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
-                drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
+            
+            drop_bomb_score = 0
+            drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
+            drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
             
             features.append(can_drop_bomb)
             features.append(drop_bomb_score) # dim = 1
 
-            # get nearest 1 crates
+            # get nearest 2 crates
             def find_indices_of_value(arr, value):
                 indices = []
                 for i, row in enumerate(arr):
@@ -271,9 +278,9 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 1 crates
+            # add nearest 2 crates, might too time consuming
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 1)) # dim = 4*n
+                                                           (x_now,y_now), crates_pos, 2)) # dim = 4*n
             
             # add nearest 1 bombs
             bombs_pos = [bomb[0] for bomb in game_state["bombs"]]
@@ -301,7 +308,7 @@ class GetFeatures():
                     
                 # add step 0 explosion
                 explosion_map = explosion_map_0.copy()
-                explosion_map[explosion_map > 0] -= i
+                explosion_map[explosion_map > 0] -= i # go i time step
 
                 # add future explosion
                 for bomb in game_state["bombs"]:
@@ -312,50 +319,65 @@ class GetFeatures():
                         explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # the origianl code is exp.timer - 1, so here is a -1
 
                 grid_list.append(field + explosion_map)
-
-            # 2. find a shortest path in grid, breadth first search
-            def find_shortest_escape_path(grid_list, start):
-                def neighbors(node):
-                    x, y = node
-                    return [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
-
-                visited = set()
-                queue = deque([(start, 0)])
-                rows, cols = len(grid), len(grid[0])
-
-                while queue:
-                    node, distance = queue.popleft()
-                    
-                    # It's safe now and in the future
-                    is_safe = True 
-                    if distance < len(grid_list):
-                        for i in range(distance, len(grid_list)):
-                            if grid_list[i][node] != 0:
-                                is_safe = False
-                                break
-                    else:
-                        continue # continue queue loop
-
-                    if is_safe:
-                        return distance
-
-                    visited.add(node)
-
-                    for neighbor in neighbors(node):
-                        x, y = neighbor
-                        if 0 <= x < rows and 0 <= y < cols and neighbor not in visited \
-                            and distance + 1 < len(grid_list) \
-                            and grid_list[distance + 1][x][y] == 0:
-                            queue.append((neighbor, distance + 1))
-
-                return INF  # If no path is found
             
             for i in range(len(neighbours)):
-                escape[i] = find_shortest_escape_path(grid_list, neighbours[i])
+                danger_cnt = 0
+                for j in range(len(grid_list)):
+                    if grid_list[j][neighbours[i]] > 0: # dangerous
+                        danger_cnt += 1
+                escape[i] = danger_cnt / len(grid_list) # scale to 1
             
-            escape /= INF # scale to [0,1]
-            # add directions to escape from explosions
-            features.append(escape) # dim = 4
+            features.append(escape)
+
+            # add explosion map
+            explosion_directions = np.zeros(len(neighbours))
+            for i in range(len(neighbours)):
+                explosion_directions[i] = explosion_map_0[neighbours[i]]
+            features.append(explosion_directions)
+
+            # 2. find a shortest path in grid, breadth first search
+            # def find_shortest_escape_path(grid_list, start):
+            #     def neighbors(node):
+            #         x, y = node
+            #         return [(x-1, y), (x+1, y), (x, y-1), (x, y+1)]
+
+            #     visited = set()
+            #     queue = deque([(start, 0)])
+            #     rows, cols = len(grid), len(grid[0])
+
+            #     while queue:
+            #         node, distance = queue.popleft()
+                    
+            #         # It's safe now and in the future
+            #         is_safe = True 
+            #         if distance < len(grid_list):
+            #             for i in range(distance, len(grid_list)):
+            #                 if grid_list[i][node] != 0:
+            #                     is_safe = False
+            #                     break
+            #         else:
+            #             continue # continue queue loop
+
+            #         if is_safe:
+            #             return distance
+
+            #         visited.add(node)
+
+            #         for neighbor in neighbors(node):
+            #             x, y = neighbor
+            #             if 0 <= x < rows and 0 <= y < cols and neighbor not in visited \
+            #                 and distance + 1 < len(grid_list) \
+            #                 and grid_list[distance + 1][x][y] == 0:
+            #                 queue.append((neighbor, distance + 1))
+
+            #     return INF  # If no path is found
+            
+            # for i in range(len(neighbours)):
+            #     escape[i] = find_shortest_escape_path(grid_list, neighbours[i])
+            # escape /= INF # scale to [0,1]
+            # # add directions to escape from explosions
+            # features.append(escape) # dim = 4
+
 
             # flatten features and convert it to np.array
             def flatten_list(lst):
