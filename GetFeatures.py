@@ -109,8 +109,11 @@ class GetFeatures():
 
         def get_distances_directions(self, grid, current_pos, target_pos_list, size = 3):
             x_now, y_now = current_pos
-            target_distances = [self.find_shortest_path(grid, current_pos, pos) \
+            
+            # to save time, use manhattan distance for large number of targets
+            target_distances = [self.manhattan_distance(current_pos, pos) \
                                   for pos in target_pos_list]
+            
             combined = list(zip(target_pos_list, target_distances))
             
             # ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
@@ -271,7 +274,7 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 1 crates
+            # add nearest 1 crates, might too time consuming
             features.append(self.get_distances_directions(game_state["field"],
                                                            (x_now,y_now), crates_pos, 1)) # dim = 4*n
             
