@@ -47,9 +47,11 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, features_dim),
+            nn.Linear(n_input_channels, 64),
             nn.ReLU(),
             
+            nn.Linear(64, features_dim),
+            nn.ReLU(),
         )
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
@@ -60,7 +62,7 @@ if __name__ == '__main__':
     model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
     option={"argv": ["play","--no-gui","--agents","user_agent",\
                                                 "rule_based_agent","rule_based_agent","rule_based_agent", \
-                                                "--scenario","classic"],
+                                                "--scenario","loot-crate-6"],
             "enable_rule_based_agent_reward": True}
 
     env = CustomEnv(options = option)
@@ -78,10 +80,10 @@ if __name__ == '__main__':
                 device="cpu",
                 batch_size = 64,
                 tau = 0.8, #0.8
-                gamma = 0.99, #0.1 training by rule_based_agent, only need immediate reward
+                gamma = 0.9, # 0.9 #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0003,#0.0003
                 target_update_interval= 10240,
-                exploration_fraction=0.9,
+                exploration_fraction=0.9, # 0.9
                 exploration_initial_eps = 0.9,
                 exploration_final_eps = 0.1,
                 stats_window_size= 100,
@@ -117,9 +119,10 @@ if __name__ == '__main__':
         "exploration_fraction": 0.5,
         "exploration_initial_eps": 0.9,
         "exploration_final_eps":0.1,
-        "stats_window_size": 100
+        "stats_window_size": 100,
+        "device":"auto"
         }
-    # model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) 
+    model = DQN.load(model_path,env = env, force_reset = True) #, custom_objects = new_parameters
     while True:
         model.learn( total_timesteps=102400, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440

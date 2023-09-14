@@ -114,13 +114,21 @@
 #     return False
 
 # # Example usage:
-# grid = [
-#     [0, 1, 0, 1, 1],
-#     [0, 1, 0, 0, 1],
-#     [0, 1, 1, 1, 0],
-#     [0, 0, 1, 1, 0]
-# ]
+grid = [
+    [0, 1, 0, 1, 1],
+    [0, 1, 0, 0, 1],
+    [0, 1, 1, 2, 0],
+    [0, 0, 1, 1, 0]
+]
+def find_indices_of_value(arr, value):
+                indices = []
+                for i, row in enumerate(arr):
+                    for j, element in enumerate(row):
+                        if element == value:
+                            indices.append((i, j))
+                return indices
 
+print(find_indices_of_value(grid,2))
 # start = (1, 2)
 # TIME = 2
 
@@ -144,16 +152,16 @@ import numpy as np
 # print(eye)
 # print(len(eye == 1))
 
-nested_list = [[1, 2, 3], [4, [5.1, 5.2], 6], [7, 8, 9]]
-# flatten_list = [item for sublist in nested_list for item in sublist]
-def flatten_list(lst):
-                flattened_list = []
-                for item in lst:
-                    if isinstance(item, list):
-                        flattened_list.extend(flatten_list(item))
-                    else:
-                        flattened_list.append(item)
-                return flattened_list
+# nested_list = [[1, 2, 3], [4, [5.1, 5.2], 6], [7, 8, 9]]
+# # flatten_list = [item for sublist in nested_list for item in sublist]
+# def flatten_list(lst):
+#                 flattened_list = []
+#                 for item in lst:
+#                     if isinstance(item, list):
+#                         flattened_list.extend(flatten_list(item))
+#                     else:
+#                         flattened_list.append(item)
+#                 return flattened_list
 
-flatten = flatten_list(nested_list)
-print(flatten)
+# flatten = flatten_list(nested_list)
+# print(flatten)
