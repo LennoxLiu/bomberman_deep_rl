@@ -304,7 +304,7 @@ class GetFeatures():
                     
                 # add step 0 explosion
                 explosion_map = explosion_map_0.copy()
-                explosion_map[explosion_map > 0] -= i
+                explosion_map[explosion_map > 0] -= i # go i time step
 
                 # add future explosion
                 for bomb in game_state["bombs"]:
@@ -315,6 +315,15 @@ class GetFeatures():
                         explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # the origianl code is exp.timer - 1, so here is a -1
 
                 grid_list.append(field + explosion_map)
+            
+            for i in range(len(neighbours)):
+                danger_cnt = 0
+                for j in range(len(grid_list)):
+                    if grid_list[j][neighbours[i]] > 0: # dangerous
+                        danger_cnt += 1
+                escape[i] = danger_cnt / len(grid_list) # scale to 1
+            
+            features.append(escape)
 
             # 2. find a shortest path in grid, breadth first search
             def find_shortest_escape_path(grid_list, start):
@@ -353,12 +362,12 @@ class GetFeatures():
 
                 return INF  # If no path is found
             
-            for i in range(len(neighbours)):
-                escape[i] = find_shortest_escape_path(grid_list, neighbours[i])
-            
-            escape /= INF # scale to [0,1]
-            # add directions to escape from explosions
-            features.append(escape) # dim = 4
+            # for i in range(len(neighbours)):
+            #     escape[i] = find_shortest_escape_path(grid_list, neighbours[i])
+            # escape /= INF # scale to [0,1]
+            # # add directions to escape from explosions
+            # features.append(escape) # dim = 4
+
 
             # flatten features and convert it to np.array
             def flatten_list(lst):

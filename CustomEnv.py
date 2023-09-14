@@ -315,8 +315,8 @@ class CustomEnv(gym.Env):
                         break
                     else:
                         wait_time += 1
-                if pos == current_pos:
-                    reward -= 20 # back and forth punishment
+                if pos == current_pos and ACTION_MAP[action] != target_action:
+                    reward -= 10 # back and forth punishment
                 if ACTION_MAP[action] != "BOMB":
                     reward -= wait_time * 5 # Waiting punishment
         

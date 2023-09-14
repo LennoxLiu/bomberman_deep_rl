@@ -47,10 +47,10 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 64),
+            nn.Linear(n_input_channels, 32),
             nn.ReLU(),
             
-            nn.Linear(64, features_dim),
+            nn.Linear(32, features_dim),
             nn.ReLU(),
         )
 
@@ -120,11 +120,11 @@ if __name__ == '__main__':
         "exploration_initial_eps": 1,
         "exploration_final_eps":0.1,
         "stats_window_size": 100,
-        "device":"auto"
+        "device":"cpu"
         }
-    # model = DQN.load(model_path,env = env, force_reset = True) #, custom_objects = new_parameters
-    # model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
+    model = DQN.load(model_path,env = env, force_reset = True) #, custom_objects = new_parameters
+    model.learn( total_timesteps=10240*5, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
     while True:
-        model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
+        model.learn( total_timesteps=10240*5, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
         model.save(model_path)
