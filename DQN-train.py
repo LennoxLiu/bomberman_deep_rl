@@ -47,10 +47,7 @@ class CustomMLP(BaseFeaturesExtractor):
         # Re-ordering will be done by pre-preprocessing or wrapper
         n_input_channels = observation_space.shape[0]
         self.mlp = nn.Sequential(
-            nn.Linear(n_input_channels, 64),
-            nn.ReLU(),
-
-            nn.Linear(64, 32),
+            nn.Linear(n_input_channels, 32),
             nn.ReLU(),
             
             nn.Linear(32, features_dim),
@@ -65,7 +62,7 @@ if __name__ == '__main__':
     model_path = "./Original/agent_code/DQN_agent/dqn_bomberman"
     option={"argv": ["play","--no-gui","--agents","user_agent",\
                                                 "rule_based_agent","rule_based_agent","rule_based_agent", \
-                                                "--scenario","loot-crate-6"],
+                                                "--scenario","classic"],
             "enable_rule_based_agent_reward": True}
 
     env = CustomEnv(options = option)
@@ -75,14 +72,14 @@ if __name__ == '__main__':
 
     policy_kwargs = dict(
         features_extractor_class=CustomMLP,
-        features_extractor_kwargs=dict(features_dim=32),
-        net_arch=[32, 16]
+        features_extractor_kwargs=dict(features_dim=64),
+        net_arch=[64, 32]
     )
 
     model = DQN("MlpPolicy", env, learning_starts=0,
                 device="auto",
                 batch_size = 64,
-                tau = 0.8, #0.8
+                tau = 0.001, #0.8
                 gamma = 0.9, # 0.9 #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0003,#0.0003
                 target_update_interval= 10240,
