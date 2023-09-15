@@ -4,7 +4,7 @@ import numpy as np
 
 INF = s.COLS + s.ROWS
 FEATURE_DIM = 34
-TOTAL_COINS = s.SCENARIOS["loot-crate-6"]["COIN_COUNT"]
+TOTAL_COINS = s.SCENARIOS["classic"]["COIN_COUNT"]
 
 def get_blast_coords(arena, bomb_x, bomb_y):
         x = bomb_x
