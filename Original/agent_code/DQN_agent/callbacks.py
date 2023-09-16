@@ -10,7 +10,7 @@ def setup(self):
 def act(self, game_state: dict):
     observation = fromStateToObservation(self.get_features_class, game_state)
 
-    action, _states = self.model.predict(observation, deterministic=True)
+    action, _states = self.model.predict(observation)
     print(ACTION_MAP[action])
     self.logger.info("Pick action: "+ ACTION_MAP[action])
 

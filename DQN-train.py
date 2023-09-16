@@ -114,16 +114,16 @@ if __name__ == '__main__':
         # "learning_rate": 0.0001,
         # "target_update_interval": 10240, # more n_steps means more robust, less tuned
         # "batch_size": 64,
-        # "tau": 0.01,#0.05,
-        "gamma": 0.5,
+        "tau": 0.001,#0.05,
+        "gamma": 0.9,
         "exploration_fraction": 1,
         "exploration_initial_eps": 0.3,
-        "exploration_final_eps":0.2,
+        "exploration_final_eps":0.05,
         # "stats_window_size": 100,
         "device":"cpu"
         }
-    # model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
-    # model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
+    model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
+    model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
     while True:
         model.learn( total_timesteps=10240*5, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
