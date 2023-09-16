@@ -77,15 +77,15 @@ if __name__ == '__main__':
     )
 
     model = DQN("MlpPolicy", env, learning_starts=0,
-                device="auto",
+                device="cpu",
                 batch_size = 64,
                 tau = 0.01, #0.8
-                gamma = 0.5, # 0.9 #0.1 training by rule_based_agent, only need immediate reward
+                gamma = 0.9, # 0.9 #0.1 training by rule_based_agent, only need immediate reward
                 learning_rate = 0.0003,#0.0003
                 target_update_interval= 10240,
                 exploration_fraction=0.999, # 0.9
                 exploration_initial_eps = 1,
-                exploration_final_eps = 0.1,
+                exploration_final_eps = 0.2,
                 stats_window_size= 100,
                 policy_kwargs = policy_kwargs,
                 tensorboard_log="./tb_log/",
