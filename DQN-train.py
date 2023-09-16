@@ -122,8 +122,8 @@ if __name__ == '__main__':
         # "stats_window_size": 100,
         "device":"cpu"
         }
-    model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
-    model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
+    # model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
+    # model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
     while True:
         model.learn( total_timesteps=10240*5, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
