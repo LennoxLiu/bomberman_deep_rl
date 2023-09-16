@@ -63,7 +63,7 @@ if __name__ == '__main__':
     option={"argv": ["play","--no-gui","--agents","user_agent",\
                                                 "rule_based_agent","rule_based_agent","rule_based_agent", \
                                                 "--scenario","classic"],
-            "enable_rule_based_agent_reward": True}
+            "enable_rule_based_agent_reward": False}
 
     env = CustomEnv(options = option)
     # env_vec = make_vec_env(CustomEnv,n_envs=1,seed=np.random.randint(0, 2**31 - 1), env_kwargs={"options":option})
@@ -118,7 +118,7 @@ if __name__ == '__main__':
         "gamma": 0.9,
         "exploration_fraction": 1,
         "exploration_initial_eps": 0.2,
-        "exploration_final_eps":0.05,
+        "exploration_final_eps":0.1,
         # "stats_window_size": 100,
         "device":"cpu"
         }

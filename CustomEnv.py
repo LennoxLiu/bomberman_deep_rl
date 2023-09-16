@@ -325,7 +325,7 @@ class CustomEnv(gym.Env):
         # maintain self.trajectory
         self.trajectory.append(current_pos)
         
-        return observation, reward, terminated, truncated, {}
+        return observation, reward/10, terminated, truncated, {}
 
 
     def reset(self, seed = np.random.randint(0, 2**31 - 1)):
