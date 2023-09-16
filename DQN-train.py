@@ -111,19 +111,19 @@ if __name__ == '__main__':
     #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
     new_parameters = {
-        "learning_rate": 0.0001,
+        # "learning_rate": 0.0001,
         # "target_update_interval": 10240, # more n_steps means more robust, less tuned
         # "batch_size": 64,
         # "tau": 0.8,#0.05,
-        "gamma": 0.8,
+        # "gamma": 0.8,
         "exploration_fraction": 1,
         "exploration_initial_eps": 0.3,
         "exploration_final_eps":0.2,
         # "stats_window_size": 100,
         "device":"cpu"
         }
-    # model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
-    # model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
+    model = DQN.load(model_path,env = env, force_reset = True, custom_objects = new_parameters) #
+    model.learn( total_timesteps=10240*2, progress_bar=True, log_interval = 100, reset_num_timesteps=True)
     while True:
         model.learn( total_timesteps=10240*5, progress_bar=True, log_interval = 100, reset_num_timesteps=False)
         # total_timesteps=61440
