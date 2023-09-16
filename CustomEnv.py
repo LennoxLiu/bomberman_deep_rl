@@ -142,9 +142,10 @@ class CustomEnv(gym.Env):
                     deep_agent_win = False
             
             reward = 0
-            # reward += self.deep_agent.score * 100
-            # if deep_agent_win:
-            #     reward += 10000
+            reward += self.deep_agent.score * 100
+            if deep_agent_win:
+                reward += 1000
+            reward += self.deep_agent.last_game_state["step"]
 
             return observation, reward, terminated, truncated, {}
         
@@ -266,15 +267,15 @@ class CustomEnv(gym.Env):
                     case e.KILLED_OPPONENT:
                         game_event_reward += 5000 
                     case e.KILLED_SELF:
-                        game_event_reward -= 2000 * (1- game_state["step"]/s.MAX_STEPS)
+                        game_event_reward -= 2000
                     case e.GOT_KILLED:
-                        game_event_reward -= 1000 * (1- game_state["step"]/s.MAX_STEPS)
+                        game_event_reward -= 1000
                     case e.OPPONENT_ELIMINATED:
                         game_event_reward -= 10
                     case e.SURVIVED_ROUND:
                         game_event_reward += 500
 
-            survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
+            # survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
             
             # to prevent agent to back and forward
             back_forward_punishment = 0
@@ -290,8 +291,8 @@ class CustomEnv(gym.Env):
                     back_forward_punishment -= 50
                 non_explore_punishment -= wait_time * 5
 
-            reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
-        
+            reward = back_forward_punishment + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
+            # + survive_reward
 
         if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
             reward = 0

@@ -117,7 +117,7 @@ if __name__ == '__main__':
         "tau": 0.001,#0.05,
         "gamma": 0.9,
         "exploration_fraction": 1,
-        "exploration_initial_eps": 0.3,
+        "exploration_initial_eps": 0.2,
         "exploration_final_eps":0.05,
         # "stats_window_size": 100,
         "device":"cpu"
