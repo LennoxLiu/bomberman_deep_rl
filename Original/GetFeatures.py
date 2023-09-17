@@ -198,14 +198,14 @@ class GetFeatures():
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 2 coin distances after action, consider wall and crates
+            # add nearest 3 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],2))
+                                                           (x_now,y_now), game_state["coins"],3))
 
-            # get nearest 2 opponent, consider wall and crates
+            # get nearest 3 opponent, consider wall and crates
             opponent_pos = [op[3] for op in game_state["others"]]
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), opponent_pos,2))
+                                                           (x_now,y_now), opponent_pos,3))
             
             # if place bomb at current position, hom many crates can be exploded
             def get_crates_cnt(grid, x_now,y_now):
@@ -245,7 +245,7 @@ class GetFeatures():
             features.append(can_drop_bomb)
             features.append(drop_bomb_score) # dim = 1
 
-            # get nearest 2 crates
+            # get nearest 3 crates
             def find_indices_of_value(arr, value):
                 indices = []
                 for i, row in enumerate(arr):
@@ -255,9 +255,9 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 1 crates
+            # add nearest 3 crates
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 2)) # dim = 4*n
+                                                           (x_now,y_now), crates_pos, 3)) # dim = 4*n
             
             # add directions to escape from bombs
             # consider multiple bombs, check if in_bomb_range

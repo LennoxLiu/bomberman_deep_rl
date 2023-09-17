@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
-BATCH = 16
+BATCH = 32
 
 def setup_training(self):
     """
@@ -31,8 +31,12 @@ def setup_training(self):
     self.target_actions = []
     self.rewards = []
     self.get_reward_class = GetReward(self.random_seed, directly_rule_based = True)
+    # ccp_alpha
+    # max_leaf_nodes
+    # min_samples_leaf
+    # max_depth
 
-    self.model = RandomForestClassifier(n_estimators=100, n_jobs = -1, oob_score=True)
+    self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
     self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     # delete_all_files_in_folder('./tb_logs')
 
@@ -107,7 +111,7 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # so now we get reward for last action
     self.rewards.append(self.get_reward_class.get_reward(last_game_state,self.target_actions[-1]))
     # print(self.rewards)
-    
+
     if last_game_state["round"] % BATCH == 0:
         total_rewards = sum(self.rewards)
 
