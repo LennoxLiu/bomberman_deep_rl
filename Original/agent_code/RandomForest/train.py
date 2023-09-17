@@ -16,8 +16,8 @@ from tensorboardX import SummaryWriter
 import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
-
-BATCH = 8 # 16
+import settings as s
+BATCH = 32 # 16
 
 def setup_training(self):
     """
@@ -72,6 +72,8 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
         self.get_reward_class.events = []
     else:
         self.get_reward_class.events = events # store events to pass to GetReward
+    
+    update_rewards_from_events(self) # after act(), so the current reward is already there
 #     """
 #     Called once per step to allow intermediate rewards based on game events.
 
@@ -115,9 +117,10 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # so now we get reward for last action
     self.rewards.append(self.get_reward_class.get_reward(last_game_state,self.target_actions[-1], events))
     # print(self.rewards)
+    update_rewards_from_events(self)
 
     if last_game_state["round"] % BATCH == 0:
-        total_rewards = sum(self.rewards[self.rewards > 0])
+        total_rewards = sum([reward for reward in self.rewards if reward > 0])
 
         self.observations = np.array(self.observations)
         self.target_actions = np.array(self.target_actions)
@@ -139,7 +142,35 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # reset after end round
     self.get_reward_class.reset()
 
+def update_rewards_from_events(self):
+    for event in self.get_reward_class.events:
+        match(event):
+            case e.COIN_COLLECTED:
+                # game_event_reward += 1000
+                self.rewards[-1] += 500
+                for i in range(2, min(s.BOMB_TIMER, len(self.rewards)) + 1):
+                    self.rewards[-i] += 500 / i
+            case e.KILLED_OPPONENT:
+                # game_event_reward += 5000
+                self.rewards[-s.BOMB_TIMER -1] += 2500
+                for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
+                    self.rewards[-i] += 100
+            case e.KILLED_SELF:
+                # game_event_reward -= 2000
+                self.rewards[-s.BOMB_TIMER -1] -= 500
+                for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
+                    self.rewards[-i] -= 25
+            case e.GOT_KILLED:
+                # game_event_reward -= 1000
+                for i in range(1, s.BOMB_TIMER + 1):
+                    self.rewards[-i] -= 50
 
+            # case e.OPPONENT_ELIMINATED:
+            #     game_event_reward -= 10
+            case e.SURVIVED_ROUND:
+                for i in range(1, len(self.rewards) + 1):
+                    self.rewards[-i] += 200
+    
 def update_model(self):
     n_splits = 5
 

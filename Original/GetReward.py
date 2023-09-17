@@ -123,18 +123,18 @@ class GetReward():
                         game_event_reward += 500
                     case e.COIN_FOUND:
                         game_event_reward += 100
-                    case e.COIN_COLLECTED:
-                        game_event_reward += 1000
-                    case e.KILLED_OPPONENT:
-                        game_event_reward += 5000 
-                    case e.KILLED_SELF:
-                        game_event_reward -= 2000 * (1- game_state["step"]/s.MAX_STEPS)
-                    case e.GOT_KILLED:
-                        game_event_reward -= 1000 * (1- game_state["step"]/s.MAX_STEPS)
-                    case e.OPPONENT_ELIMINATED:
-                        game_event_reward -= 10
-                    case e.SURVIVED_ROUND:
-                        game_event_reward += 500
+                    # case e.COIN_COLLECTED:
+                    #     game_event_reward += 1000
+                    # case e.KILLED_OPPONENT:
+                    #     game_event_reward += 5000 
+                    # case e.KILLED_SELF:
+                    #     game_event_reward -= 2000 * (1- game_state["step"]/s.MAX_STEPS)
+                    # case e.GOT_KILLED:
+                    #     game_event_reward -= 1000 * (1- game_state["step"]/s.MAX_STEPS)
+                    # case e.OPPONENT_ELIMINATED:
+                    #     game_event_reward -= 10
+                    # case e.SURVIVED_ROUND:
+                        # game_event_reward += 500
 
             survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
             
