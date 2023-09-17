@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
-BATCH = 16 # 16
+BATCH = 8 # 16
 
 def setup_training(self):
     """
@@ -30,19 +30,20 @@ def setup_training(self):
     self.observations = []
     self.target_actions = []
     self.rewards = []
-    self.get_reward_class = GetReward(self.random_seed,directly_rule_based = True)
+    self.get_reward_class = GetReward(self.random_seed,directly_rule_based = False)
+    self.get_reward_class.events = None
     # ccp_alpha
     # max_leaf_nodes
     # min_samples_leaf
     # max_depth
 
-    self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
-    self.metadata = {"global_steps": 0,"params": self.model.get_params()}
+    # self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
+    # self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     # delete_all_files_in_folder('./tb_logs')
 
-    # self.model = joblib.load('random_forest_model.joblib')
-    # with open('metadata.pickle', 'rb') as file:
-    #     self.metadata = pickle.load(file)
+    self.model = joblib.load('./models/random_forest_model.joblib')
+    with open('metadata.pickle', 'rb') as file:
+        self.metadata = pickle.load(file)
     
     # self.writer = SummaryWriter("./tb_logs")
 
@@ -67,7 +68,10 @@ def delete_all_files_in_folder(folder_path):
 
 
 def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_state: dict, events: List[str]):
-    pass
+    if events == None:
+        self.get_reward_class.events = []
+    else:
+        self.get_reward_class.events = events # store events to pass to GetReward
 #     """
 #     Called once per step to allow intermediate rewards based on game events.
 
@@ -109,18 +113,18 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     """
     # get reward for this action needs next game_state
     # so now we get reward for last action
-    self.rewards.append(self.get_reward_class.get_reward(last_game_state,self.target_actions[-1]))
+    self.rewards.append(self.get_reward_class.get_reward(last_game_state,self.target_actions[-1], events))
     # print(self.rewards)
 
     if last_game_state["round"] % BATCH == 0:
-        total_rewards = sum(self.rewards)
+        total_rewards = sum(self.rewards[self.rewards > 0])
 
         self.observations = np.array(self.observations)
         self.target_actions = np.array(self.target_actions)
         self.rewards = np.array(self.rewards) / total_rewards
 
-        with open('train_data.pickle', 'wb') as file:
-            pickle.dump([self.observations, self.target_actions, self.rewards], file)
+        # with open('train_data.pickle', 'wb') as file:
+        #     pickle.dump([self.observations, self.target_actions, self.rewards], file)
         
         update_model(self)
         self.observations = []

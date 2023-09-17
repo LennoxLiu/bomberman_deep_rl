@@ -26,7 +26,7 @@ def setup(self):
 
     :param self: This object is passed to all callbacks and you can set arbitrary values.
     """
-    if self.train and not os.path.isfile("random_forest_model.joblib"):
+    if self.train and not os.path.isfile("./models/random_forest_model.joblib"):
         print("Error: model not found.")
     else:
         self.model = joblib.load('./models/random_forest_model.joblib')
@@ -49,15 +49,18 @@ def act(self, game_state: dict) -> str:
     observation = self.get_feature_class.state_to_features(game_state)
 
     # todo Exploration vs exploitation
-    exploration_rate = 0
+    exploration_rate = 0.05
     action = None
     if self.train:
         if random.random() < exploration_rate:
             # self.logger.debug("Choosing action purely at random.")
             # 80%: walk in any direction. 10% wait. 10% bomb.
             action =  np.random.choice(ACTION_MAP, p=[.2, .2, .2, .2, .1, .1])
-        else: # do as rule_based model to generate learning data
-            action, _ = self.rule_based_model.act(game_state)
+        else: 
+            # do as rule_based model to generate learning data
+            # action, _ = self.rule_based_model.act(game_state)
+            action = self.model.predict([observation])[0]
+            action = ACTION_MAP[action]
         
         self.observations.append(observation)
 
@@ -66,9 +69,9 @@ def act(self, game_state: dict) -> str:
         if game_state["step"] > 1:
             self.rewards.append(
                 self.get_reward_class.get_reward(
-                    game_state, self.target_actions[-1]))
+                    game_state, self.target_actions[-1], None))
         else: # first step
-            self.get_reward_class.get_reward(game_state, None)
+            self.get_reward_class.get_reward(game_state, None, [])
 
         self.target_actions.append(ACTION_INV_MAP[action])
 

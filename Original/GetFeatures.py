@@ -36,16 +36,16 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
     return (int(x),int(y)) in blast_coords
 
 
-class GetFeatures():
-        
-        def __init__(self):
-            self.coins = []
-        
-        def manhattan_distance(self, point1, point2):
+def manhattan_distance(point1, point2):
             x1, y1 = point1
             x2, y2 = point2
             distance = int(abs(x2 - x1) + abs(y2 - y1))
             return distance
+
+class GetFeatures():
+        
+        def __init__(self):
+            self.coins = []
 
         def get_valid_actions(self, game_state):
             _, score, bombs_left, (x, y) = game_state['self']
@@ -112,7 +112,7 @@ class GetFeatures():
             x_now, y_now = current_pos
             
             # to save time, use manhattan distance for large number of targets
-            target_distances = [self.manhattan_distance(current_pos, pos) \
+            target_distances = [manhattan_distance(current_pos, pos) \
                                   for pos in target_pos_list]
             
             combined = list(zip(target_pos_list, target_distances))

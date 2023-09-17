@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import settings as s
-from GetFeatures import in_bomb_range
+from GetFeatures import in_bomb_range, manhattan_distance
 import events as e
 from RuleBasedAgent import RuleBasedAgent
 
@@ -11,13 +11,15 @@ class GetReward():
     def __init__(self, random_seed = 42, directly_rule_based = False):
         self.trajectory = []
         self.rule_based_model = RuleBasedAgent(random_seed)
-        self.enable_rule_based_agent_reward = True
+        self.enable_rule_based_agent_reward = False
         self.last_game_state = None
         self.directly_rule_based = directly_rule_based # do not check the action with another rule based agent
-    
+        self.events = None
+
     def reset(self):
         self.trajectory = []
         self.last_game_state = None
+        self.events = None
 
         # Reset rule based model
         self.rule_based_model.reset_self()
@@ -25,10 +27,14 @@ class GetReward():
     # reward at "game_state" doing "action"
     # "game_state" is state after "action"
     # action here should be index
-    def get_reward(self, game_state: dict, action: int):
+    def get_reward(self, game_state: dict, action: int, events = []):
         if self.last_game_state == None:
             self.last_game_state = game_state
             return 0
+
+        if events == None:
+            # In callbacks.py act(), get events from train.py
+            events = self.events
 
         current_pos = game_state["self"][3]
     
@@ -47,7 +53,7 @@ class GetReward():
             
             for i in range(1, len(self.trajectory)):
                 pos = self.trajectory[-i] 
-                non_explore_punishment -= b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
+                non_explore_punishment -= b* np.exp(-a *manhattan_distance(current_pos, pos)) * np.exp(-a*i)
 
             # new visit reward
             new_visit_reward = 0
@@ -101,7 +107,7 @@ class GetReward():
 
             # Get game event reward
             game_event_reward = 0
-            for event in self.deep_agent.events:
+            for event in events:
                 match(event):
                     case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
                         game_event_reward += 5
@@ -146,8 +152,10 @@ class GetReward():
                     back_forward_punishment -= 50
                 non_explore_punishment -= wait_time * 5
 
-            reward = back_forward_punishment + survive_reward + game_event_reward + new_visit_reward + non_explore_punishment
+            reward = back_forward_punishment  + game_event_reward 
             # lose meaningful_bomb_reward
+            # + new_visit_reward + non_explore_punishment
+            # + survive_reward
 
         if self.enable_rule_based_agent_reward: # enable rule_based_agent_reward
             reward = 0
