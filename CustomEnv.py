@@ -136,15 +136,14 @@ class CustomEnv(gym.Env):
             observation = fromStateToObservation(self.get_feature_class, self.deep_agent.last_game_state)
             
             # check if our agent wins
-            deep_agent_win = True
+            deep_agent_win = 0
             for agent in self.world.agents:
-                if agent.score > self.deep_agent.score:
-                    deep_agent_win = False
+                if agent.score < self.deep_agent.score:
+                    deep_agent_win += 1
             
             reward = 0
-            reward += self.deep_agent.score * 100
-            if deep_agent_win:
-                reward += 1000
+            reward += self.deep_agent.last_game_state["self"][1] * 100
+            reward += deep_agent_win * 500
             reward += self.deep_agent.last_game_state["step"]
 
             return observation, reward, terminated, truncated, {}
@@ -275,7 +274,7 @@ class CustomEnv(gym.Env):
                     case e.SURVIVED_ROUND:
                         game_event_reward += 500
 
-            # survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
+            survive_reward = 50 * (game_state["step"]/s.MAX_STEPS) # considering invad operation punishment = 50
             
             # to prevent agent to back and forward
             back_forward_punishment = 0
@@ -291,8 +290,10 @@ class CustomEnv(gym.Env):
                     back_forward_punishment -= 50
                 non_explore_punishment -= wait_time * 5
 
-            reward = back_forward_punishment + game_event_reward + new_visit_reward + non_explore_punishment + meaningfull_bomb_reward
-            # + survive_reward
+            reward = game_event_reward + meaningfull_bomb_reward + survive_reward
+            # back_forward_punishment
+            # + non_explore_punishment 
+            #  + new_visit_reward 
 
         if self.metadata["enable_rule_based_agent_reward"]: # enable rule_based_agent_reward
             reward = 0

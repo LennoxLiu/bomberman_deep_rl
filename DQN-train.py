@@ -111,14 +111,14 @@ if __name__ == '__main__':
     #  device: device | str = "auto", _init_setup_model: bool = True) -> None
 
     new_parameters = {
-        # "learning_rate": 0.0001,
+        "learning_rate": 0.0000005,
         # "target_update_interval": 10240, # more n_steps means more robust, less tuned
         # "batch_size": 64,
-        "tau": 0.001,#0.05,
+        "tau": 0.00001,#0.05,
         "gamma": 0.9,
         "exploration_fraction": 1,
-        "exploration_initial_eps": 0.2,
-        "exploration_final_eps":0.1,
+        "exploration_initial_eps": 0.1,
+        "exploration_final_eps":0.05,
         # "stats_window_size": 100,
         "device":"cpu"
         }
