@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
-BATCH = 32
+BATCH = 16
 
 def setup_training(self):
     """
@@ -36,7 +36,7 @@ def setup_training(self):
     # min_samples_leaf
     # max_depth
 
-    self.model = RandomForestClassifier(n_estimators = 2000, min_samples_leaf = 10, n_jobs = -1, oob_score=True)
+    self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
     self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     # delete_all_files_in_folder('./tb_logs')
 
@@ -119,6 +119,9 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
         self.target_actions = np.array(self.target_actions)
         self.rewards = np.array(self.rewards) / total_rewards
 
+        with open('train_data.pickle', 'wb') as file:
+            pickle.dump([self.observations, self.target_actions, self.rewards], file)
+        
         update_model(self)
         self.observations = []
         self.target_actions = []

@@ -112,3 +112,8 @@ screenshots/*.webm
 replays/
 results/
 *.joblib
+*.joblib
+*.pickle
+Original/agent_code/RandomForest/metadata.pickle
+Original/agent_code/RandomForest/random_forest_model.joblib
+Original/agent_code/RandomForest/random_forest_model.joblib
