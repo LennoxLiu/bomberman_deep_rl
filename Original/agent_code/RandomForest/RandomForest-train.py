@@ -8,7 +8,7 @@ if __name__ == "__main__":
     with open('./agent_code/RandomForest/train_data.pickle', 'rb') as file:
         observations, target_actions, rewards = pickle.load(file)
 
-    model = RandomForestClassifier(n_estimators = 500, n_jobs = -1, oob_score=True)
+    model = RandomForestClassifier(n_estimators = 1000, n_jobs = -1, oob_score=True)
     metadata = {"global_steps": 0,"params": model.get_params()}
     #500
     n_splits = 10
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     average_accuracy = total_accuracy / n_splits
 
     # Store the model
-    joblib.dump(model, './agent_code/RandomForest/random_forest_model.joblib')
+    joblib.dump(model, './agent_code/RandomForest/models/random_forest_model.joblib')
     with open('./agent_code/RandomForest/metadata.pickle', 'wb') as file:
         pickle.dump(metadata, file)
 

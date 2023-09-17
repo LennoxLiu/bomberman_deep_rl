@@ -29,7 +29,7 @@ def setup(self):
     if self.train and not os.path.isfile("random_forest_model.joblib"):
         print("Error: model not found.")
     else:
-        self.model = joblib.load('random_forest_model.joblib')
+        self.model = joblib.load('./models/random_forest_model.joblib')
     
     
     self.random_seed = np.random.randint(1, 2**31 -1)

@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
-BATCH = 16
+BATCH = 128 # 16
 
 def setup_training(self):
     """
@@ -162,7 +162,7 @@ def update_model(self):
     average_accuracy = total_accuracy / n_splits
 
     # Store the model
-    joblib.dump(self.model, 'random_forest_model.joblib')
+    joblib.dump(self.model, './models/random_forest_model.joblib')
     with open('metadata.pickle', 'wb') as file:
         pickle.dump(self.metadata, file)
 
