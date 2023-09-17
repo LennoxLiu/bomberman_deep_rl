@@ -190,6 +190,10 @@ class Agent:
         if self.dead:
             screen.blit(self.shade, (x, y))
 
+    def game_ended(self):
+        print("game_ended in Class Agent")
+        self.backend.send_event("game_ended", self)
+        self.backend.get("game_ended", timeout=5)
 
 class AgentRunner:
     """

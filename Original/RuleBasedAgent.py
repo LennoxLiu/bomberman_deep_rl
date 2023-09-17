@@ -6,7 +6,7 @@ import numpy as np
 import settings as s
 
 class RuleBasedAgent():
-    def __init__(self):
+    def __init__(self, random_seed = 42):
         """Called once before a set of games to initialize data structures etc.
 
         The 'self' object passed to this method will be the same in all other
@@ -15,7 +15,7 @@ class RuleBasedAgent():
         You can also use the self.logger object at any time to write to the log
         file for debugging (see https://docs.python.org/3.7/library/logging.html).
         """
-        np.random.seed()
+        np.random.seed(random_seed)
         # Fixed length FIFO queues to avoid repeating the same actions
         self.bomb_history = deque([], 5)
         self.coordinate_history = deque([], 20)

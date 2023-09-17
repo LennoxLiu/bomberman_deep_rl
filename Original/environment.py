@@ -13,7 +13,7 @@ import numpy as np
 
 import events as e
 import settings as s
-from agents import Agent, SequentialAgentBackend
+from agents import Agent, ProcessAgentBackend, SequentialAgentBackend
 from fallbacks import pygame
 from items import Coin, Explosion, Bomb
 
@@ -507,7 +507,6 @@ class BombeRLeWorld(GenericWorld):
         for a in self.agents:
             # Send exit message to shut down agent
             self.logger.debug(f'Sending exit message to agent <{a.name}>')
-            # todo multiprocessing shutdown
 
 
 class GUI:
