@@ -30,13 +30,13 @@ def setup_training(self):
     self.observations = []
     self.target_actions = []
     self.rewards = []
-    self.get_reward_class = GetReward(self.random_seed, directly_rule_based = True)
+    self.get_reward_class = GetReward(self.random_seed,directly_rule_based = True)
     # ccp_alpha
     # max_leaf_nodes
     # min_samples_leaf
     # max_depth
 
-    self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
+    self.model = RandomForestClassifier(n_estimators = 2000, min_samples_leaf = 10, n_jobs = -1, oob_score=True)
     self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     # delete_all_files_in_folder('./tb_logs')
 
