@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 
-BATCH = 128 # 16
+BATCH = 16 # 16
 
 def setup_training(self):
     """
