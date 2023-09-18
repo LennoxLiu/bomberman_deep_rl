@@ -11,7 +11,7 @@ if __name__ == "__main__":
     model = RandomForestClassifier(n_estimators = 1000, ccp_alpha = 0.0001, n_jobs = -1, oob_score=True)
     metadata = {"global_steps": 0,"params": model.get_params()}
     #500
-    n_splits = 4
+    n_splits = 10
 
     # Initialize the KFold object
     kf = KFold(n_splits=n_splits)
