@@ -58,9 +58,9 @@ def act(self, game_state: dict) -> str:
             action =  np.random.choice(ACTION_MAP, p=[.2, .2, .2, .2, .1, .1])
         else: 
             # do as rule_based model to generate learning data
-            # action, _ = self.rule_based_model.act(game_state)
-            action = self.model.predict([observation])[0]
-            action = ACTION_MAP[action]
+            action, _ = self.rule_based_model.act(game_state)
+            # action = self.model.predict([observation])[0]
+            # action = ACTION_MAP[action]
         
         self.observations.append(observation)
 

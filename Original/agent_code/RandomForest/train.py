@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
-BATCH = 32 # 16
+BATCH = 600 # 16 #2048
 
 def setup_training(self):
     """
@@ -30,20 +30,20 @@ def setup_training(self):
     self.observations = []
     self.target_actions = []
     self.rewards = []
-    self.get_reward_class = GetReward(self.random_seed,directly_rule_based = False)
+    self.get_reward_class = GetReward(self.random_seed,directly_rule_based = True)
     self.get_reward_class.events = None
     # ccp_alpha
     # max_leaf_nodes
     # min_samples_leaf
     # max_depth
 
-    # self.model = RandomForestClassifier(n_estimators = 2000, n_jobs = -1, oob_score=True)
-    # self.metadata = {"global_steps": 0,"params": self.model.get_params()}
-    # delete_all_files_in_folder('./tb_logs')
+    self.model = RandomForestClassifier(n_estimators = 1500, ccp_alpha= 0.0001, n_jobs = -1, oob_score=True)
+    self.metadata = {"global_steps": 0,"params": self.model.get_params()}
+    delete_all_files_in_folder('./tb_logs')
 
-    self.model = joblib.load('./models/random_forest_model.joblib')
-    with open('metadata.pickle', 'rb') as file:
-        self.metadata = pickle.load(file)
+    # self.model = joblib.load('./models/random_forest_model.joblib')
+    # with open('metadata.pickle', 'rb') as file:
+    #     self.metadata = pickle.load(file)
     
     # self.writer = SummaryWriter("./tb_logs")
 
@@ -124,10 +124,11 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 
         self.observations = np.array(self.observations)
         self.target_actions = np.array(self.target_actions)
+        # print(self.rewards)
         self.rewards = np.array(self.rewards) / total_rewards
 
-        # with open('train_data.pickle', 'wb') as file:
-        #     pickle.dump([self.observations, self.target_actions, self.rewards], file)
+        with open('train_data.pickle', 'wb') as file:
+            pickle.dump([self.observations, self.target_actions, self.rewards], file)
         
         update_model(self)
         self.observations = []
@@ -154,22 +155,24 @@ def update_rewards_from_events(self):
                 # game_event_reward += 5000
                 self.rewards[-s.BOMB_TIMER -1] += 2500
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] += 100
+                    self.rewards[-i] += 100 * i # after dropping the bomb
+                for i in range(1, min(s.BOMB_TIMER, len(self.rewards) - s.BOMB_TIMER -1) + 1):
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 500 / i # before dropping the bomb
             case e.KILLED_SELF:
                 # game_event_reward -= 2000
-                self.rewards[-s.BOMB_TIMER -1] -= 500
+                self.rewards[-s.BOMB_TIMER -1] -= 1000
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] -= 25
+                    self.rewards[-i] -= 200
             case e.GOT_KILLED:
                 # game_event_reward -= 1000
                 for i in range(1, s.BOMB_TIMER + 1):
-                    self.rewards[-i] -= 50
+                    self.rewards[-i] -= 500
 
             # case e.OPPONENT_ELIMINATED:
             #     game_event_reward -= 10
-            case e.SURVIVED_ROUND:
-                for i in range(1, len(self.rewards) + 1):
-                    self.rewards[-i] += 200
+            # case e.SURVIVED_ROUND:
+            #     for i in range(1, min(100, len(self.rewards)) + 1):
+            #         self.rewards[-i] += 200
     
 def update_model(self):
     n_splits = 5
