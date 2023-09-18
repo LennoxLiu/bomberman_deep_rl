@@ -17,7 +17,7 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
-BATCH = 600 # 16 #2048
+BATCH = 300 # 16 #600
 
 def setup_training(self):
     """
@@ -37,7 +37,7 @@ def setup_training(self):
     # min_samples_leaf
     # max_depth
 
-    self.model = RandomForestClassifier(n_estimators = 1500, ccp_alpha= 0.0001, n_jobs = -1, oob_score=True)
+    self.model = RandomForestClassifier(n_estimators = 1000, ccp_alpha= 0.0001, n_jobs = -1, oob_score=True)
     self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     delete_all_files_in_folder('./tb_logs')
 
@@ -146,11 +146,15 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
 def update_rewards_from_events(self):
     for event in self.get_reward_class.events:
         match(event):
+            case e.CRATE_DESTROYED:
+                self.rewards[-s.BOMB_TIMER - 1] += 100
+                for i in range(1, min(s.ROWS, len(self.rewards) - s.ROWS -1) + 1):
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 50 - (45/s.ROWS) * i # s.ROWS before dropping the bomb
             case e.COIN_COLLECTED:
                 # game_event_reward += 1000
                 self.rewards[-1] += 500
-                for i in range(2, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] += 500 / i
+                for i in range(2, min(s.ROWS, len(self.rewards)) + 1):
+                    self.rewards[-i] += 500 - (450/s.ROWS) * i # s.ROWS walking towards coin
             case e.KILLED_OPPONENT:
                 # game_event_reward += 5000
                 self.rewards[-s.BOMB_TIMER -1] += 2500

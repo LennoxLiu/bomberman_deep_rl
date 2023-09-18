@@ -8,10 +8,10 @@ if __name__ == "__main__":
     with open('./agent_code/RandomForest/train_data.pickle', 'rb') as file:
         observations, target_actions, rewards = pickle.load(file)
 
-    model = RandomForestClassifier(n_estimators = 1500, ccp_alpha = 0.0001, n_jobs = -1, oob_score=True)
+    model = RandomForestClassifier(n_estimators = 1000, ccp_alpha = 0.0001, n_jobs = -1, oob_score=True)
     metadata = {"global_steps": 0,"params": model.get_params()}
     #500
-    n_splits = 5
+    n_splits = 4
 
     # Initialize the KFold object
     kf = KFold(n_splits=n_splits)
