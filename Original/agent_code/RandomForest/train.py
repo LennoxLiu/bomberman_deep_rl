@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 600 # 16 #600 # 300
+BATCH = 1000 # 16 # 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
@@ -122,15 +122,18 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     update_rewards_from_events(self, events)
 
     if last_game_state["round"] % BATCH == 0:
-        total_rewards = sum([reward for reward in self.rewards if reward > 0])
+        self.rewards = np.array(self.rewards)
+        self.rewards[self.rewards < 0] = 0
+        total_rewards = sum(self.rewards)
 
         self.observations = np.array(self.observations)
         self.target_actions = np.array(self.target_actions)
-        # print(np.array(self.rewards, dtype=np.int16) )
-        self.rewards = np.array(self.rewards) / total_rewards
 
         with open('train_data.pickle', 'wb') as file:
             pickle.dump([self.observations, self.target_actions, self.rewards], file)
+        
+        self.rewards = self.rewards / total_rewards
+        print(self.rewards)
         
         update_model(self)
         self.observations = []
@@ -151,36 +154,36 @@ def update_rewards_from_events(self, events = []):
     for event in events:
         match(event):
             case e.COIN_FOUND:
-                self.rewards[-s.BOMB_TIMER - 1] += 100
+                self.rewards[-s.BOMB_TIMER - 1] += 50
                 for i in range(1, min(s.ROWS, len(self.rewards) - s.ROWS -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 50 - (40/s.ROWS) * i # s.ROWS before dropping the bomb
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/s.ROWS) * i # s.ROWS before dropping the bomb
             case e.CRATE_DESTROYED:
-                self.rewards[-s.BOMB_TIMER - 1] += 100
+                self.rewards[-s.BOMB_TIMER - 1] += 50
                 for i in range(1, min(s.ROWS, len(self.rewards) - s.ROWS -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 50 - (40/s.ROWS) * i # s.ROWS before dropping the bomb
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/s.ROWS) * i # s.ROWS before dropping the bomb
             case e.COIN_COLLECTED:
                 # game_event_reward += 1000
-                self.rewards[-1] += 1000
+                self.rewards[-1] += 200
                 for i in range(2, min(s.ROWS, len(self.rewards)) + 1):
-                    self.rewards[-i] += 250 - (200/s.ROWS) * i # s.ROWS walking towards coin
+                    self.rewards[-i] += 75 - (65/s.ROWS) * i # s.ROWS walking towards coin
             case e.KILLED_OPPONENT:
                 # game_event_reward += 5000
-                self.rewards[-s.BOMB_TIMER -1] += 2500
+                self.rewards[-s.BOMB_TIMER -1] += 300
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] += 150 * i # after dropping the bomb
+                    self.rewards[-i] += 30 * i # after dropping the bomb
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards) - s.BOMB_TIMER -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 500 -(400/s.BOMB_TIMER)* i # before dropping the bomb
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 120 -(100/s.BOMB_TIMER)* i # before dropping the bomb
             case e.KILLED_SELF:
                 # print("Killed self.")
                 # game_event_reward -= 2000
-                self.rewards[-s.BOMB_TIMER -1] -= 3000
+                self.rewards[-s.BOMB_TIMER -1] -= 2000
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] -= 500
+                    self.rewards[-i] -= 200
             case e.GOT_KILLED:
                 # print("Got killed.")
                 # game_event_reward -= 1000
                 for i in range(1, s.BOMB_TIMER + 1):
-                    self.rewards[-i] -= 1000
+                    self.rewards[-i] -= 500
 
             # case e.OPPONENT_ELIMINATED:
             #     game_event_reward -= 10

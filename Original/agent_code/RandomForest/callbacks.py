@@ -49,16 +49,16 @@ def act(self, game_state: dict) -> str:
     observation = self.get_feature_class.state_to_features(game_state)
 
     # todo Exploration vs exploitation
-    exploration_rate = 0.05
+    exploration_rate = 0
     action = None
     if self.train:
-        if random.random() < exploration_rate:
+        # if random.random() < exploration_rate:
             # self.logger.debug("Choosing action purely at random.")
             # 80%: walk in any direction. 10% wait. 10% bomb.
-            action =  np.random.choice(ACTION_MAP, p=[.2, .2, .2, .2, .1, .1])
-        else: 
+            # action =  np.random.choice(ACTION_MAP, p=[.2, .2, .2, .2, .1, .1])
+        # else: 
             # do as rule_based model to generate learning data
-            action, _ = self.rule_based_model.act(game_state)
+        action, _ = self.rule_based_model.act(game_state)
             # action = self.model.predict([observation])[0]
             # action = ACTION_MAP[action]
         

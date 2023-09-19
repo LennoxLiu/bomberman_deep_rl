@@ -25,8 +25,14 @@ if __name__ == "__main__":
         y_train, y_test = target_actions[train_index], target_actions[test_index]
         weights_train, weights_test = rewards[train_index], rewards[test_index]
 
+        total_rewards_train = sum([reward for reward in weights_train if reward > 0])
+        weights_train /= total_rewards_train
+
+        total_rewards_test =  sum([reward for reward in weights_test if reward > 0])
+        weights_test /= total_rewards_test
+
         # Train the model
-        model.fit(X_train, y_train, sample_weight=weights_train)  # Use sample weights
+        model.fit(X_train, y_train, sample_weight = weights_train)  # Use sample weights
 
         # Evaluate the model
         accuracy = model.score(X_test, y_test, sample_weight=weights_test)  # Use sample weights
