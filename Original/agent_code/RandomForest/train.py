@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 1000 # 16 # 
+BATCH = 64 # 16 # 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
@@ -165,7 +165,7 @@ def update_rewards_from_events(self, events = []):
                 # game_event_reward += 1000
                 self.rewards[-1] += 200
                 for i in range(2, min(s.ROWS, len(self.rewards)) + 1):
-                    self.rewards[-i] += 75 - (65/s.ROWS) * i # s.ROWS walking towards coin
+                    self.rewards[-i] += 150 - (120/s.ROWS) * i # s.ROWS walking towards coin
             case e.KILLED_OPPONENT:
                 # game_event_reward += 5000
                 self.rewards[-s.BOMB_TIMER -1] += 300
@@ -176,14 +176,14 @@ def update_rewards_from_events(self, events = []):
             case e.KILLED_SELF:
                 # print("Killed self.")
                 # game_event_reward -= 2000
-                self.rewards[-s.BOMB_TIMER -1] -= 2000
+                self.rewards[-s.BOMB_TIMER -1] -= 150
                 for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] -= 200
+                    self.rewards[-i] -= 50
             case e.GOT_KILLED:
                 # print("Got killed.")
                 # game_event_reward -= 1000
                 for i in range(1, s.BOMB_TIMER + 1):
-                    self.rewards[-i] -= 500
+                    self.rewards[-i] -= 100
 
             # case e.OPPONENT_ELIMINATED:
             #     game_event_reward -= 10
