@@ -160,7 +160,7 @@ class GetFeatures():
 
                 if length <= s.BOMB_TIMER:
                     is_safe_later = True
-                    for i in range(s.BOMB_TIMER + 1):
+                    for i in range(length, s.BOMB_TIMER + 1):
                         if grid_list[i][x][y] != 0:
                             is_safe_later = False
                             break
