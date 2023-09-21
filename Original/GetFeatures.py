@@ -222,19 +222,19 @@ class GetFeatures():
             features.append(self.get_distances_directions(None,
                                                            (x_now,y_now), game_state["coins"],1, False))
             
-            # add nearest 2 bomb distance, mahattan_distance
+            # add nearest 1 bomb distance, mahattan_distance
             grid = [bomb[0] for bomb in game_state["bombs"]]
             features.append(self.get_distances_directions(None,
-                                                           (x_now,y_now), grid ,2, False))
+                                                           (x_now,y_now), grid ,1, False))
             
-            # add nearest 2 opponent, consider wall and crates
+            # add nearest 1 opponent, consider wall and crates
             opponent_pos = [op[3] for op in game_state["others"]]
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), opponent_pos,2))
+                                                           (x_now,y_now), opponent_pos,1))
             
-            # get nearest 2 opponent, manhattan_distance
+            # get nearest 1 opponent, manhattan_distance
             features.append(self.get_distances_directions(None,
-                                                           (x_now,y_now), opponent_pos,2, False))
+                                                           (x_now,y_now), opponent_pos,1, False))
 
             # if place bomb at current position, hom many crates can be exploded
             def get_crates_cnt(grid, x_now,y_now):
@@ -267,9 +267,9 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 3 crates
+            # add nearest 1 crates
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 3)) # dim = 4*n
+                                                           (x_now,y_now), crates_pos, 1)) # dim = 4*n
             
             # get grid for different time step
             grid_list = []
