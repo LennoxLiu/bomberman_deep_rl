@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 512 # 16 # 64
+BATCH = 256 # 16 # 64
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
@@ -41,13 +41,13 @@ def setup_training(self):
     # min_samples_leaf
     # max_depth
 
-    self.model = RandomForestClassifier(n_estimators = 1000, ccp_alpha= 0.0001, n_jobs = -1, oob_score=True)
-    self.metadata = {"global_steps": 0,"params": self.model.get_params()}
+    # self.model = RandomForestClassifier(n_estimators = 1000, ccp_alpha= 0.0001, n_jobs = -1, oob_score=True)
+    # self.metadata = {"global_steps": 0,"params": self.model.get_params()}
     delete_all_files_in_folder('./tb_logs')
 
-    # self.model = joblib.load('./models/random_forest_model.joblib')
-    # with open('metadata.pickle', 'rb') as file:
-    #     self.metadata = pickle.load(file)
+    self.model = joblib.load('./models/random_forest_model.joblib')
+    with open('metadata.pickle', 'rb') as file:
+        self.metadata = pickle.load(file)
     
     # self.writer = SummaryWriter("./tb_logs")
 
