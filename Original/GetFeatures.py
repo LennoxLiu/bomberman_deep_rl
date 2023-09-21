@@ -247,7 +247,7 @@ class GetFeatures():
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
 
-            # add nearest 1 crate, consider wall and creates
+            # add nearest 1 crate, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
                                                            (x_now,y_now), crates_pos, 1))
 
