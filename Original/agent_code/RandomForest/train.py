@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 64 # 16 # 
+BATCH = 64 # 16 # 64
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
@@ -32,8 +32,10 @@ def setup_training(self):
     self.observations = []
     self.target_actions = []
     self.rewards = []
+    self.all_rewards = []
     self.get_reward_class = GetReward(self.random_seed,directly_rule_based = True)
     self.get_reward_class.events = None
+    self.bomb_at_step = -1
     # ccp_alpha
     # max_leaf_nodes
     # min_samples_leaf
@@ -75,6 +77,11 @@ def game_events_occurred(self, old_game_state: dict, self_action: str, new_game_
     else:
         self.get_reward_class.events = events # store events to pass to GetReward
     
+    self.step = new_game_state["step"]
+
+    if e.BOMB_DROPPED in events:
+        self.bomb_at_step = self.step
+
     update_rewards_from_events(self) # after act(), so the current reward is already there
 #     """
 #     Called once per step to allow intermediate rewards based on game events.
@@ -121,109 +128,108 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     # print(self.rewards)
     update_rewards_from_events(self, events)
 
+    self.all_rewards.extend([max(0,reward) for reward in self.rewards])
+
     if last_game_state["round"] % BATCH == 0:
-        self.rewards = np.array(self.rewards)
-        self.rewards[self.rewards < 0] = 0
-        total_rewards = sum(self.rewards)
+        self.all_rewards= np.array(self.all_rewards)
+        total_rewards = sum(self.all_rewards)
 
         self.observations = np.array(self.observations)
         self.target_actions = np.array(self.target_actions)
 
         with open('train_data.pickle', 'wb') as file:
-            pickle.dump([self.observations, self.target_actions, self.rewards], file)
+            pickle.dump([self.observations, self.target_actions, self.all_rewards], file)
         
-        self.rewards = self.rewards / total_rewards
-        print(self.rewards)
+        print(self.all_rewards)
         
         update_model(self)
         self.observations = []
         self.target_actions = []
-        self.rewards = []
+        self.all_rewards = []
     
-    # add data to tensorboard
-    # self.writer.add_scalar("score",  self.model.score(self.observations,self.target_actions, self.rewards), self.metadata["global_steps"])
-    # self.writer.add_histogram("weights", self.rewards, self.metadata["global_steps"])
-    # self.writer.add_scalar("n_estimators", self.model.n_estimators, self.metadata["global_steps"])
+    # clear rewards at every round, to use the length of rewards as steps
+    self.rewards = [] 
 
     # reset after end round
     self.get_reward_class.reset()
 
 def update_rewards_from_events(self, events = []):
-    REWARD_DISTANCE = 10
+    REWARD_DISTANCE = s.ROWS
+    BEFORE_REWARD_RANGE = s.ROWS # for go and drop bomb reward
+    bomb_time = self.step - self.bomb_at_step + 1
+    step_length = len(self.rewards)
+
     if events == []: # not end of round
         events = self.get_reward_class.events
     for event in events:
         match(event):
             case e.COIN_FOUND:
-                self.rewards[-s.BOMB_TIMER - 1] += 50
-                for i in range(1, min(REWARD_DISTANCE, len(self.rewards) - s.BOMB_TIMER -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
+                self.rewards[-s.BOMB_TIMER] += 50
+                for i in range(1, min(REWARD_DISTANCE, step_length - s.BOMB_TIMER) + 1):
+                    self.rewards[-s.BOMB_TIMER -i] += 25 - (20/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
             case e.CRATE_DESTROYED:
-                self.rewards[-s.BOMB_TIMER - 1] += 35
-                for i in range(1, min(REWARD_DISTANCE, len(self.rewards) - s.BOMB_TIMER -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 20 - (15/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
+                self.rewards[-s.BOMB_TIMER] += 35
+                for i in range(1, min(REWARD_DISTANCE, step_length - s.BOMB_TIMER) + 1):
+                    self.rewards[-s.BOMB_TIMER -i] += 20 - (15/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
             case e.COIN_COLLECTED:
                 # game_event_reward += 1000
                 self.rewards[-1] += 200
-                for i in range(2, min(s.ROWS, len(self.rewards)) + 1):
+                for i in range(2, min(s.ROWS, step_length) + 1):
                     self.rewards[-i] += 150 - (120/s.ROWS) * i # s.ROWS walking towards coin
-            case e.KILLED_OPPONENT:
-                # game_event_reward += 5000
-                self.rewards[-s.BOMB_TIMER -1] += 300
-                for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
+            case e.KILLED_OPPONENT: # not sure when drop the bomb
+                # print("BOMB time: ", bomb_time)
+                self.rewards[- bomb_time] += 300
+                for i in range(1, bomb_time):
                     self.rewards[-i] += 30 * i # after dropping the bomb
-                for i in range(1, min(s.BOMB_TIMER, len(self.rewards) - s.BOMB_TIMER -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 120 -(100/s.BOMB_TIMER)* i # before dropping the bomb
+                for i in range(1, min(BEFORE_REWARD_RANGE, step_length - BEFORE_REWARD_RANGE) + 1):
+                    self.rewards[-bomb_time - i] += 120 -(100/BEFORE_REWARD_RANGE)* i # before dropping the bomb
             case e.KILLED_SELF:
-                # print("Killed self.")
-                # game_event_reward -= 2000
-                self.rewards[-s.BOMB_TIMER -1] -= 150
-                for i in range(1, min(s.BOMB_TIMER, len(self.rewards)) + 1):
-                    self.rewards[-i] -= 50
+                for i in range(1, min(bomb_time, step_length) + 1):
+                    self.rewards[-i] -= 500
             case e.GOT_KILLED:
-                # print("Got killed.")
-                # game_event_reward -= 1000
-                for i in range(1, s.BOMB_TIMER + 1):
-                    self.rewards[-i] -= 100
+                for i in range(1, min(s.BOMB_TIMER + s.EXPLOSION_TIMER, step_length) + 1):
+                    self.rewards[-i] -= 500
 
-            # case e.OPPONENT_ELIMINATED:
-            #     game_event_reward -= 10
-            # case e.SURVIVED_ROUND:
-            #     for i in range(1, min(100, len(self.rewards)) + 1):
-            #         self.rewards[-i] += 200
-    
+
 def update_model(self):
-    n_splits = 3
+    # Train the model
+    sample_weight=self.all_rewards/sum(self.all_rewards)
+    self.model.fit(self.observations, self.target_actions, sample_weight=sample_weight)
 
-    # Initialize the KFold object
-    kf = KFold(n_splits=n_splits)
+    average_accuracy = self.model.score(self.observations, self.target_actions, sample_weight=sample_weight)  # Use sample weights
+    
+    # n_splits = 3
 
-    # Initialize a variable to keep track of the performance metrics (e.g., accuracy)
-    total_accuracy = 0
+    # # Initialize the KFold object
+    # kf = KFold(n_splits=n_splits)
 
-    # Iterate through the folds
-    for train_index, test_index in kf.split(self.target_actions):
-        X_train, X_test = self.observations[train_index], self.observations[test_index]
-        y_train, y_test = self.target_actions[train_index], self.target_actions[test_index]
-        weights_train, weights_test = self.rewards[train_index], self.rewards[test_index]
+    # # Initialize a variable to keep track of the performance metrics (e.g., accuracy)
+    # total_accuracy = 0
 
-        # Train the model
-        self.model.fit(X_train, y_train, sample_weight=weights_train)  # Use sample weights
+    # # Iterate through the folds
+    # for train_index, test_index in kf.split(self.target_actions):
+    #     X_train, X_test = self.observations[train_index], self.observations[test_index]
+    #     y_train, y_test = self.target_actions[train_index], self.target_actions[test_index]
+    #     weights_train, weights_test = self.all_rewards[train_index], self.all_rewards[test_index]
 
-        # Evaluate the model
-        accuracy = self.model.score(X_test, y_test, sample_weight=weights_test)  # Use sample weights
-        total_accuracy += accuracy
+    #     # Train the model
+    #     self.model.fit(X_train, y_train, sample_weight=weights_train/sum(weights_train))  # Use sample weights
 
-    # Calculate the average performance metric
-    average_accuracy = total_accuracy / n_splits
+        # # Evaluate the model
+        # accuracy = self.model.score(X_test, y_test, sample_weight=weights_test/sum(weights_test))  # Use sample weights
+        # total_accuracy += accuracy
+
+    # # Calculate the average performance metric
+    # average_accuracy = total_accuracy / n_splits
 
     # Store the model
     joblib.dump(self.model, './models/random_forest_model.joblib')
     with open('metadata.pickle', 'wb') as file:
         pickle.dump(self.metadata, file)
 
-    self.metadata["global_steps"] += len(self.target_actions)*(n_splits - 1) # update global_steps
-    
+    # self.metadata["global_steps"] += len(self.target_actions)*(n_splits - 1) # update global_steps
+    self.metadata["global_steps"] += len(self.target_actions)
+
     print("\naverage_accuracy:", average_accuracy)
     print("OOB_score:", self.model.oob_score_)
     print("total_steps:",self.metadata["global_steps"])
