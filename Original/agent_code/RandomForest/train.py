@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 256 # 16 # 64
+BATCH = 64 # 16 # 64
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
@@ -173,19 +173,19 @@ def update_rewards_from_events(self, events = []):
                     self.rewards[-s.BOMB_TIMER -i] += 20 - (15/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
             case e.COIN_COLLECTED:
                 # game_event_reward += 1000
-                self.rewards[-1] += 200
+                self.rewards[-1] += 400
                 for i in range(2, min(s.ROWS, step_length) + 1):
-                    self.rewards[-i] += 150 - (120/s.ROWS) * i # s.ROWS walking towards coin
+                    self.rewards[-i] += 300 - (240/s.ROWS) * i # s.ROWS walking towards coin
             case e.KILLED_OPPONENT: # not sure when drop the bomb
                 # print("BOMB time: ", bomb_time)
-                self.rewards[- bomb_time] += 300
+                self.rewards[- bomb_time] += 600
                 for i in range(1, bomb_time):
-                    self.rewards[-i] += 30 * i # after dropping the bomb
+                    self.rewards[-i] += 60 * i # after dropping the bomb
                 for i in range(1, min(BEFORE_REWARD_RANGE, step_length - BEFORE_REWARD_RANGE) + 1):
-                    self.rewards[-bomb_time - i] += 120 -(100/BEFORE_REWARD_RANGE)* i # before dropping the bomb
+                    self.rewards[-bomb_time - i] += 240 -(200/BEFORE_REWARD_RANGE)* i # before dropping the bomb
             case e.KILLED_SELF:
                 for i in range(1, min(bomb_time, step_length) + 1):
-                    self.rewards[-i] -= 500
+                    self.rewards[-i] -= 250
             case e.GOT_KILLED:
                 for i in range(1, min(s.BOMB_TIMER + s.EXPLOSION_TIMER, step_length) + 1):
                     self.rewards[-i] -= 500
