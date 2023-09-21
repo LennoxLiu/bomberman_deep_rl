@@ -108,7 +108,7 @@ class GetFeatures():
             return INF  # If no path is found
 
 
-        def get_distances_directions(self, grid, current_pos, target_pos_list, size = 3):
+        def get_distances_directions(self, grid, current_pos, target_pos_list, size = 3, find_shortest_path = True):
             x_now, y_now = current_pos
             
             # to save time, use manhattan distance for large number of targets
@@ -132,11 +132,16 @@ class GetFeatures():
             target_distances_directions = np.zeros((len(neighbours),size))
             target_distances_directions.fill(INF)
             
-            for i in range(len(neighbours)):
-                for j in range(size):
-                    target_distances_directions[i,j] = self.find_shortest_path(grid,
-                                                                             neighbours[i], closest_targets[j] )
-            
+            if find_shortest_path:
+                for i in range(len(neighbours)):
+                    for j in range(size):
+                        target_distances_directions[i,j] = self.find_shortest_path(grid,
+                                                                                neighbours[i], closest_targets[j] )
+            else:
+                for i in range(len(neighbours)):
+                    for j in range(size):
+                        target_distances_directions[i,j] = manhattan_distance(neighbours[i], closest_targets[j])
+
             target_distances_directions /= INF # scale to [0,1]
             return target_distances_directions.flatten()
 
@@ -198,15 +203,23 @@ class GetFeatures():
             valid_actions = self.get_valid_actions(game_state)
             features.append(valid_actions) # dim = 5
 
-            # add nearest 3 coin distances after action, consider wall and crates
+            # add nearest 1 coin distances after action, consider wall and crates
             features.append(self.get_distances_directions(game_state['field'],
-                                                           (x_now,y_now), game_state["coins"],3))
+                                                           (x_now,y_now), game_state["coins"],1))
 
-            # get nearest 3 opponent, consider wall and crates
+            # add nearest 1 coin distance, mahattan_distance
+            features.append(self.get_distances_directions(None,
+                                                           (x_now,y_now), game_state["coins"],1, False))
+            
+            # add nearest 3 opponent, consider wall and crates
             opponent_pos = [op[3] for op in game_state["others"]]
             features.append(self.get_distances_directions(game_state['field'],
                                                            (x_now,y_now), opponent_pos,3))
             
+            # get nearest 3 opponent, manhattan_distance
+            features.append(self.get_distances_directions(None,
+                                                           (x_now,y_now), opponent_pos,3, False))
+
             # if place bomb at current position, hom many crates can be exploded
             def get_crates_cnt(grid, x_now,y_now):
                 bomb_crates_cnt = 0
@@ -245,7 +258,7 @@ class GetFeatures():
             features.append(can_drop_bomb)
             features.append(drop_bomb_score) # dim = 1
 
-            # get nearest 3 crates
+            # get nearest 1 crates
             def find_indices_of_value(arr, value):
                 indices = []
                 for i, row in enumerate(arr):
@@ -255,9 +268,9 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 3 crates
+            # add nearest 1 crates
             features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 3)) # dim = 4*n
+                                                           (x_now,y_now), crates_pos, 1)) # dim = 4*n
             
             # add directions to escape from bombs
             # consider multiple bombs, check if in_bomb_range

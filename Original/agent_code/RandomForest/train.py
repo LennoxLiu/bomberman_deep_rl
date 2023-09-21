@@ -149,18 +149,19 @@ def end_of_round(self, last_game_state: dict, last_action: str, events: List[str
     self.get_reward_class.reset()
 
 def update_rewards_from_events(self, events = []):
+    REWARD_DISTANCE = 10
     if events == []: # not end of round
         events = self.get_reward_class.events
     for event in events:
         match(event):
             case e.COIN_FOUND:
                 self.rewards[-s.BOMB_TIMER - 1] += 50
-                for i in range(1, min(s.ROWS, len(self.rewards) - s.ROWS -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/s.ROWS) * i # s.ROWS before dropping the bomb
+                for i in range(1, min(REWARD_DISTANCE, len(self.rewards) - s.BOMB_TIMER -1) + 1):
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
             case e.CRATE_DESTROYED:
-                self.rewards[-s.BOMB_TIMER - 1] += 50
-                for i in range(1, min(s.ROWS, len(self.rewards) - s.ROWS -1) + 1):
-                    self.rewards[-s.BOMB_TIMER -1 -i] += 25 - (20/s.ROWS) * i # s.ROWS before dropping the bomb
+                self.rewards[-s.BOMB_TIMER - 1] += 35
+                for i in range(1, min(REWARD_DISTANCE, len(self.rewards) - s.BOMB_TIMER -1) + 1):
+                    self.rewards[-s.BOMB_TIMER -1 -i] += 20 - (15/REWARD_DISTANCE) * i # s.ROWS before dropping the bomb
             case e.COIN_COLLECTED:
                 # game_event_reward += 1000
                 self.rewards[-1] += 200
