@@ -189,22 +189,22 @@ class GetFeatures():
             neighbours = [(x_now, y_now-1),(x_now, y_now+1), (x_now-1, y_now), (x_now+1, y_now), (x_now, y_now)]
 
             # maintain all recorded coins
-            coins_now = [(int(x), int(y)) for x, y in game_state["coins"]]
-            for coin in coins_now:
-                 if coin not in self.coins:
-                    self.coins.append(coin)
+            # coins_now = [(int(x), int(y)) for x, y in game_state["coins"]]
+            # for coin in coins_now:
+            #      if coin not in self.coins:
+            #         self.coins.append(coin)
 
-            # get crates cnt
-            crates_cnt = len(game_state["field"] == 1) # count number of crates
-            # get undiscovered coins cnt
-            undiscovered_coins_cnt = TOTAL_COINS - len(self.coins)
-            # add expected coins per crate
-            expected_coins_per_crate = 0
-            if crates_cnt > 0:
-                expected_coins_per_crate = undiscovered_coins_cnt / crates_cnt
-            if expected_coins_per_crate > 1:
-                expected_coins_per_crate = 1
-            features.append(expected_coins_per_crate)
+            # # get crates cnt
+            # crates_cnt = len(game_state["field"] == 1) # count number of crates
+            # # get undiscovered coins cnt
+            # undiscovered_coins_cnt = TOTAL_COINS - len(self.coins)
+            # # add expected coins per crate
+            # expected_coins_per_crate = 0
+            # if crates_cnt > 0:
+            #     expected_coins_per_crate = undiscovered_coins_cnt / crates_cnt
+            # if expected_coins_per_crate > 1:
+            #     expected_coins_per_crate = 1
+            # features.append(expected_coins_per_crate)
 
             # add remaining points
             # features.append(s.REWARD_COIN * (undiscovered_coins_cnt + len(game_state["coins"])) \
@@ -270,12 +270,12 @@ class GetFeatures():
                         bomb_crates_cnt += 1
                 return bomb_crates_cnt
             
-            crates_directions = []
-            grid = game_state["field"].copy()
-            for n in neighbours:
-                crates_directions.append(get_crates_cnt(grid,n[0],n[1]))
-            # add crates with directions
-            features.append(np.array(crates_directions) / (s.BOMB_POWER* 4) ) # dim = 4, scale to [0,1]
+            # crates_directions = []
+            # grid = game_state["field"].copy()
+            # for n in neighbours:
+            #     crates_directions.append(get_crates_cnt(grid,n[0],n[1]))
+            # # add crates with directions
+            # features.append(np.array(crates_directions) / (s.BOMB_POWER* 4) ) # dim = 4, scale to [0,1]
             
             # get grid for different time step
             grid_list = []
@@ -325,11 +325,11 @@ class GetFeatures():
             features.append(safe_cnt_directions)
 
             # add can_escape directions
-            can_escape_directions = np.zeros(len(neighbours))
-            for i in range(len(neighbours)):
-                if self.can_escape(grid_list,neighbours[i]):
-                    can_escape_directions[i] = 1
-            features.append(can_escape_directions)
+            # can_escape_directions = np.zeros(len(neighbours))
+            # for i in range(len(neighbours)):
+            #     if self.can_escape(grid_list,neighbours[i]):
+            #         can_escape_directions[i] = 1
+            # features.append(can_escape_directions)
 
             # add whether to drop bomb, 0 means impossible to drop or will kill ourself
             can_drop_bomb = 0     
@@ -338,10 +338,10 @@ class GetFeatures():
             features.append(can_drop_bomb)
             
             # add bomb score
-            drop_bomb_score = 0
-            drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
-            drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
-            features.append(drop_bomb_score) # dim = 1
+            # drop_bomb_score = 0
+            # drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
+            # drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
+            # features.append(drop_bomb_score) # dim = 1
 
             # flatten features and convert it to np.array
             def flatten_list(lst):
