@@ -146,16 +146,27 @@ class GetFeatures():
             return target_distances_directions.flatten()
 
         # return true if there exist a path that can escape from current bomb
-        def can_escape(self, grid, start):
-            rows, cols = len(grid), len(grid[0])
-            visited = [[False for _ in range(cols)] for _ in range(rows)]
+        # = 0 is valid path
+        def can_escape(self, grid_list, start):
+            x, y = start
+            if not( (0 < x < s.ROWS) and (0 < y < s.COLS)):
+                return False
+
+            visited = [[False for _ in range(s.COLS)] for _ in range(s.ROWS)]
             queue = deque([(start[0], start[1], 0)])
 
             while queue:
                 x, y, length = queue.popleft()
 
-                if length <= s.BOMB_TIMER and not in_bomb_range(grid,start[0], start[1],x ,y):
-                    return True
+                if length <= s.BOMB_TIMER:
+                    is_safe_later = True
+                    for i in range(s.BOMB_TIMER + 1):
+                        if grid_list[i][x][y] != 0:
+                            is_safe_later = False
+                            break
+                    
+                    if is_safe_later:
+                        return True
 
                 visited[x][y] = True
 
@@ -165,8 +176,8 @@ class GetFeatures():
                     for dx, dy in moves:
                         new_x, new_y = x + dx, y + dy
 
-                        if (0 <= x < rows) and (0 <= y < cols) \
-                            and grid[x][y] == 0 and not visited[x][y]:
+                        if (0 < x < s.ROWS) and (0 < y < s.COLS) \
+                            and grid_list[length][x][y] == 0 and not visited[x][y]:
                             queue.append((new_x, new_y, length + 1))
 
             return False
@@ -246,23 +257,6 @@ class GetFeatures():
             # add crates with directions
             features.append(np.array(crates_directions) / (s.BOMB_POWER* 4) ) # dim = 4, scale to [0,1]
 
-            # add whether to drop bomb, 0 means impossible to drop or will kill ourself
-            
-            can_drop_bomb = 0
-            grid = game_state["field"].copy()
-            grid[grid == 1] = -1 # use 1 to represent opponents
-            for op in game_state["others"]:
-                grid[op[3]] = 1 # fake oppoenent as crate
-            if bombs_left and self.can_escape(game_state["field"],(x_now,y_now)):
-                can_drop_bomb = 1
-            
-            drop_bomb_score = 0
-            drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
-            drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
-            
-            features.append(can_drop_bomb)
-            features.append(drop_bomb_score) # dim = 1
-
             # get nearest crates
             def find_indices_of_value(arr, value):
                 indices = []
@@ -277,16 +271,10 @@ class GetFeatures():
             features.append(self.get_distances_directions(game_state["field"],
                                                            (x_now,y_now), crates_pos, 3)) # dim = 4*n
             
-            # add directions to escape from bombs
-            # consider multiple bombs, check if in_bomb_range
-            escape = np.zeros(len(neighbours))
-            # first unite explosion_map and bomb, 
-            # then find path to escape and return shortest length of path at each direction
-            # or return one-hot coding for shortest
-            
-            # 1. get grid for different time step
+            # get grid for different time step
             grid_list = []
             field_0 = game_state["field"].copy()
+            field_0[field_0 == -1] = 1 # > 0 cannot pass
             explosion_map_0 = game_state["explosion_map"].copy()
             
             for i in range(s.BOMB_TIMER + 1):
@@ -306,14 +294,20 @@ class GetFeatures():
                 # add future explosion
                 for bomb in game_state["bombs"]:
                     blast_coords = []
-                    if -s.EXPLOSION_TIMER <= bomb[1] - i <= 0 : # bomb exploded, 0 or -1
-                        blast_coords = get_blast_coords(field_0, bomb[0][0], bomb[0][1]) # use field_0 becuase -1 represent wall
+                    if -s.EXPLOSION_TIMER <= bomb[1] - i <= 0 : # bomb exploded, 0 or -1 or -2
+                        blast_coords = get_blast_coords(game_state["field"], bomb[0][0], bomb[0][1]) # use game_state["field"] becuase -1 represent wall
                         for (x, y) in blast_coords:
                             explosion_map[x, y] = 1 # dangerous
 
                 explosion_map[explosion_map < 0] = 0 
-                grid_list.append(field + explosion_map) # <= 0 is safe place, invalid place is also > 0
-            
+                grid_list.append(field + explosion_map) # == 0 is safe place, invalid place is also > 0
+            # finish grid_list
+
+            # add directions to escape from bombs
+            # consider multiple bombs, check if in_bomb_range
+            safe_cnt_directions = np.zeros(len(neighbours))
+
+            # add safe count for escape directions
             for i in range(len(neighbours)):
                 safe_cnt = 0
                 for j in range(len(grid_list)):
@@ -321,10 +315,27 @@ class GetFeatures():
                         safe_cnt += 1
                     else:
                         break
-                escape[i] = safe_cnt / len(grid_list) # scale to 1
-            
-            features.append(escape)
+                safe_cnt_directions[i] = safe_cnt / len(grid_list) # scale to 1
+            features.append(safe_cnt_directions)
 
+            # add can_escape directions
+            can_escape_directions = np.zeros(len(neighbours))
+            for i in range(len(neighbours)):
+                if self.can_escape(grid_list,neighbours[i]):
+                    can_escape_directions[i] = 1
+            features.append(can_escape_directions)
+
+            # add whether to drop bomb, 0 means impossible to drop or will kill ourself
+            can_drop_bomb = 0     
+            if bombs_left and self.can_escape(grid_list,(x_now,y_now)):
+                can_drop_bomb = 1
+            features.append(can_drop_bomb)
+            
+            # add bomb score
+            drop_bomb_score = 0
+            drop_bomb_score += get_crates_cnt(game_state["field"], x_now, y_now) / (s.BOMB_POWER* 4) * 0.167 # scale to 0.5
+            drop_bomb_score += get_crates_cnt(grid, x_now, y_now) / 3 * 0.833 # scale to 0.8 for opponents
+            features.append(drop_bomb_score) # dim = 1
 
             # flatten features and convert it to np.array
             def flatten_list(lst):

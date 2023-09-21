@@ -17,7 +17,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.model_selection import KFold
 import settings as s
 
-BATCH = 32 # 16 # 64
+BATCH = 64 # 16 # 64
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 ACTION_INV_MAP = {"UP": 0, "DOWN": 1, "LEFT": 2, "RIGHT": 3, "WAIT": 4, "BOMB": 5}
 
