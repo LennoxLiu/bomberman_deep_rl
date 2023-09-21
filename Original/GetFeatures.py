@@ -290,7 +290,7 @@ class GetFeatures():
             explosion_map_0 = game_state["explosion_map"].copy()
             
             for i in range(s.BOMB_TIMER + 1):
-                field = field_0.copy()
+                field = field_0.copy() # crates are 1
 
                 for bomb in game_state["bombs"]:
                     if bomb[1] - i > 0:
@@ -306,13 +306,13 @@ class GetFeatures():
                 # add future explosion
                 for bomb in game_state["bombs"]:
                     blast_coords = []
-                    if bomb[1] - i <= 0: # <=0
-                        blast_coords = get_blast_coords(field, bomb[0][0], bomb[0][1])
-                    for (x, y) in blast_coords:
-                        explosion_map[x, y] = max(explosion_map[x, y], (bomb[1] - i + s.EXPLOSION_TIMER) - 1) # the origianl code is exp.timer - 1, so here is a -1
+                    if -s.EXPLOSION_TIMER <= bomb[1] - i <= 0 : # bomb exploded, 0 or -1
+                        blast_coords = get_blast_coords(field_0, bomb[0][0], bomb[0][1]) # use field_0 becuase -1 represent wall
+                        for (x, y) in blast_coords:
+                            explosion_map[x, y] = 1 # dangerous
 
-                explosion_map[explosion_map < 0] = 0
-                grid_list.append(field + explosion_map)
+                explosion_map[explosion_map < 0] = 0 
+                grid_list.append(field + explosion_map) # <= 0 is safe place, invalid place is also > 0
             
             for i in range(len(neighbours)):
                 safe_cnt = 0
