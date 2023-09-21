@@ -236,6 +236,26 @@ class GetFeatures():
             features.append(self.get_distances_directions(None,
                                                            (x_now,y_now), opponent_pos,2, False))
 
+            # get nearest crates
+            def find_indices_of_value(arr, value):
+                indices = []
+                for i, row in enumerate(arr):
+                    for j, element in enumerate(row):
+                        if element == value:
+                            indices.append((i, j))
+                return indices
+
+            crates_pos = find_indices_of_value(game_state["field"], 1)
+
+            # add nearest 1 crate, consider wall and creates
+            features.append(self.get_distances_directions(game_state['field'],
+                                                           (x_now,y_now), crates_pos, 1))
+
+            # add nearest 3 crates, manhattan_distance
+            features.append(self.get_distances_directions(None,
+                                                           (x_now,y_now), crates_pos, 3, False)) # dim = 4*n
+            
+
             # if place bomb at current position, hom many crates can be exploded
             def get_crates_cnt(grid, x_now,y_now):
                 bomb_crates_cnt = 0
@@ -256,20 +276,6 @@ class GetFeatures():
                 crates_directions.append(get_crates_cnt(grid,n[0],n[1]))
             # add crates with directions
             features.append(np.array(crates_directions) / (s.BOMB_POWER* 4) ) # dim = 4, scale to [0,1]
-
-            # get nearest crates
-            def find_indices_of_value(arr, value):
-                indices = []
-                for i, row in enumerate(arr):
-                    for j, element in enumerate(row):
-                        if element == value:
-                            indices.append((i, j))
-                return indices
-
-            crates_pos = find_indices_of_value(game_state["field"], 1)
-            # add nearest 3 crates
-            features.append(self.get_distances_directions(game_state["field"],
-                                                           (x_now,y_now), crates_pos, 3)) # dim = 4*n
             
             # get grid for different time step
             grid_list = []
