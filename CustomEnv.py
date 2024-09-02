@@ -132,7 +132,7 @@ class CustomEnv(gym.Env):
         # get observation
         death_reward = 0
         game_state = self.world.get_state_for_agent(self.my_agent)
-        if game_state['self'[0]] == 'DEAD': # the agent is dead
+        if game_state['self'][0] == 'DEAD': # the agent is dead
             truncated = True
             death_reward = -0.5
         
@@ -248,6 +248,15 @@ class CustomEnv(gym.Env):
         
         self.world.end()
 
+
+from gymnasium import register
+
+register(
+    id='CustomEnv-v1',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv',  # Replace with the actual path to your CustomEnv class
+)
+
+# tmp_env = gym.make('CustomEnv-v1')
 
 if __name__ == "__main__":
     env = CustomEnv()
