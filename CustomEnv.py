@@ -94,11 +94,12 @@ class CustomEnv(gym.Env):
         self.world.user_input = None
 
         # store my agent
-        self.PPO_agent = None
+        self.my_agent = None
+        self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
         for a in self.world.agents:
             if a.name == "user_agent":
-                self.PPO_agent = a
-        assert isinstance(self.PPO_agent, agents.Agent)
+                self.my_agent = a
+        assert isinstance(self.my_agent, agents.Agent)
 
         # start a new round
         self.world.new_round()
@@ -129,126 +130,95 @@ class CustomEnv(gym.Env):
         truncated = False
 
         # get observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
-        if game_state == None: # the agent is dead
+        death_reward = 0
+        game_state = self.world.get_state_for_agent(self.my_agent)
+        if game_state['self'[0]] == 'DEAD': # the agent is dead
             truncated = True
-            observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            game_state = self.PPO_agent.last_game_state
-        else:
-            observation = fromStateToObservation(game_state)
+            death_reward = -0.5
+        
+        observation = fromStateToObservation(game_state)
 
-                # terminated or trunctated
+        # terminated or trunctated
         if self.world.running == False:
             if self.world.step == s.MAX_STEPS:
                 terminated = True
-            
-        a = math.log(5)/2#math.log(2)
-        b = 5**2 #2**2
-        # calculate non-explore punishment
-        non_explore_punishment = 0
-        current_pos = game_state["self"][3]
-        for i in range(len(self.trajectory)):
-            pos = self.trajectory[-i]
-            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
-
-        # new visit reward
-        new_visit_reward = 0
-        if current_pos not in self.trajectory:
-            new_visit_reward = 10
         
-        # escape from explosion reward
-        escape_bomb_reward = 0
+        current_pos = game_state["self"][3]
+        
         def in_bomb_range(bomb_x,bomb_y,x,y):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
         
-        
-        meaningfull_bomb_reward = 0
+        # escape from explosion reward
+        escape_bomb_reward = 0
         if len(self.trajectory) > 0:
             x, y = self.trajectory[-1] # last position
             x_now, y_now =current_pos
             # Add proposal to run away from any nearby bomb about to blow
             for (xb, yb), t in game_state['bombs']:
-                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
-                    # Run away
-                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
-                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
-                        escape_bomb_reward += 20
-                    # Go towards bomb or wait
-                    if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
-                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
-                    # Run away
-                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
-                        escape_bomb_reward += 20
-                    # Go towards bomb or wait
-                    if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+                # if now in bomb range
+                if in_bomb_range(xb,yb,x_now,y_now):
+                    escape_bomb_reward -= 0.000666
 
-                # Try random direction if directly on top of a bomb
-                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
-                    and ACTION_MAP[action] != "BOMB":
-                    escape_bomb_reward += 10
+                # If agent is in a safe cell when there is a bomb nearby
+                if self.manhattan_distance((xb,yb),(x_now,y_now)) < s.BOMB_POWER + 2 and not in_bomb_range(xb,yb,x_now,y_now):
+                    escape_bomb_reward += 0.002
+        
+        
+        index=0
+        closer_to_opponent_reward = 0
+        for agent in game_state['others']:
+            current_dist = self.manhattan_distance(current_pos, agent[3])
+            closest_dist, last_dist = self.dist_to_opponent[index]
+            if current_dist < closest_dist:
+                self.dist_to_opponent[index] = (current_dist, current_dist)
+                if closest_dist != s.COLS+s.ROWS:
+                    closer_to_opponent_reward += 0.1 # the agent is in the closest distance so far to an opponent
+                closest_dist = current_dist
 
-                # If last pos in bomb range and now not
-                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30    
-
-            # meaningfull bomb reward
-            if ACTION_MAP[action] == "BOMB":
-                # if there's a agent in bomb range, reward ++
-                for agent in self.world.active_agents:
-                    if agent != self.PPO_agent and \
-                        in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 50
+            if current_dist < last_dist:
+                closer_to_opponent_reward += 0.002 # the agent is getting closer to the opponent
+            elif current_dist > last_dist:
+                closer_to_opponent_reward -= 0.002 # the agent is getting further from the opponent
+            
+            self.dist_to_opponent[index] = (closest_dist, current_dist)
+            index += 1
                 
-                field = game_state["field"]
-                for x_temp in range(field.shape[0]):
-                    for y_temp in range(field.shape[1]):
-                        if field[x_temp,y_temp] == 1 and \
-                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 20
-
-        self.trajectory.append(current_pos)
-
+        
         # Get reward
-        # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
-        for event in self.PPO_agent.events:
-            match(event):
-                case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
-                case e.WAITED:
-                    reward += 1
-                case e.INVALID_ACTION:
-                    reward -= 15
-                case e.BOMB_DROPPED:
-                    reward += 3
-                case e.BOMB_EXPLODED:
-                    reward += 3
-                case e.CRATE_DESTROYED:
-                    reward += 50
-                case e.COIN_FOUND:
-                    reward += 50
-                case e.COIN_COLLECTED:
-                    reward += 1000
-                case e.KILLED_OPPONENT:
-                    reward += 5000
-                case e.KILLED_SELF:
-                    reward -= 200
-                case e.GOT_KILLED:
-                    reward -= 500
-                case e.OPPONENT_ELIMINATED:
-                    reward -= 10
-                case e.SURVIVED_ROUND:
-                    reward += 500
+        # self.my_agent.last_game_state, self.my_agent.last_action, game_state, self.events
+        reward = death_reward + escape_bomb_reward + closer_to_opponent_reward
+        for event in self.my_agent.events:
+            if event in [e.MOVED_LEFT, e.MOVED_RIGHT, e.MOVED_UP, e.MOVED_DOWN]:
+                reward += 0
+            elif event == e.WAITED:
+                reward += 0
+            elif event == e.INVALID_ACTION:
+                reward -= 0
+            elif event == e.BOMB_DROPPED:
+                reward += 0
+            elif event == e.BOMB_EXPLODED:
+                reward += 0
+            elif event == e.CRATE_DESTROYED:
+                reward += 0.1
+            elif event == e.COIN_FOUND:
+                reward += 0.05
+            elif event == e.COIN_COLLECTED:
+                reward += 0.2
+            elif event == e.KILLED_OPPONENT:
+                reward += 1.0
+            elif event == e.KILLED_SELF:
+                reward -= 0.5
+            elif event == e.GOT_KILLED:
+                reward -= 0.5
+            elif event == e.OPPONENT_ELIMINATED:
+                reward -= 0
+            elif event == e.SURVIVED_ROUND:
+                reward += 1.0
 
-        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
+        reward =-0.01 # penalty per iteration
+        self.trajectory.append(current_pos)
+        return observation, reward, terminated, truncated, {"events" : self.my_agent.events}
 
 
     def reset(self, seed = None):
@@ -259,7 +229,7 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
         # Get first observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        game_state = self.world.get_state_for_agent(self.my_agent)
         observation = fromStateToObservation(game_state)
 
         return observation, {"info": "reset"}

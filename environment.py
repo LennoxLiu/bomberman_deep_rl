@@ -399,14 +399,16 @@ class BombeRLeWorld(GenericWorld):
         return arena, coins, active_agents
 
     def get_state_for_agent(self, agent: Agent):
+        self_state = agent.get_state()
         if agent.dead:
-            return None
+            self_name, self_score, self_bombs_left, self_pos = self_state
+            self_state = ('DEAD',self_score, self_bombs_left, self_pos) # change the agent name to DEAD when the agent is dead
 
         state = {
             'round': self.round,
             'step': self.step,
             'field': np.array(self.arena),
-            'self': agent.get_state(),
+            'self': self_state,
             'others': [other.get_state() for other in self.active_agents if other is not agent],
             'bombs': [bomb.get_state() for bomb in self.bombs],
             'coins': [coin.get_state() for coin in self.coins if coin.collectable],
