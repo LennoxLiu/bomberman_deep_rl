@@ -134,7 +134,7 @@ class CustomEnv(gym.Env):
         game_state = self.world.get_state_for_agent(self.my_agent)
         if game_state['self'][0] == 'DEAD': # the agent is dead
             truncated = True
-            death_reward = -0.5
+            # death_reward = -0.5 # deal with this later
         
         observation = fromStateToObservation(game_state)
 

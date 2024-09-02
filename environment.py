@@ -401,6 +401,7 @@ class BombeRLeWorld(GenericWorld):
     def get_state_for_agent(self, agent: Agent):
         self_state = agent.get_state()
         if agent.dead:
+            # return None
             self_name, self_score, self_bombs_left, self_pos = self_state
             self_state = ('DEAD',self_score, self_bombs_left, self_pos) # change the agent name to DEAD when the agent is dead
 
@@ -498,8 +499,8 @@ class BombeRLeWorld(GenericWorld):
 
         # Send final event to agents that expect them
         for a in self.agents:
-            if a.train:
-                a.round_ended()
+            # if a.train:
+            a.round_ended()
 
         # Save course of the game for future replay
         if self.args.save_replay:
