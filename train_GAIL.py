@@ -12,6 +12,7 @@ from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
 from CustomEnv import CustomEnv
+from rult_based_policy import RuleBasedPolicy
 
 SEED = 42
 
@@ -21,13 +22,12 @@ env = make_vec_env(
     n_envs=8,
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
 )
-expert = load_policy(
-    "ppo-huggingface",
-    organization="HumanCompatibleAI",
-    env_name="seals-CartPole-v0",
-    venv=env,
-)
-
+# expert = load_policy(
+#     policy_type='rule_based'
+#     venv=env,
+#     options = {"argv": ["play","--no-gui","--my-agent","rule_based_agent"]}
+# )
+expert = RuleBasedPolicy()
 rollouts = rollout.rollout(
     expert,
     env,
