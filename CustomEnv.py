@@ -127,7 +127,7 @@ class CustomEnv(gym.Env):
                 truncated = True
             else:
                 truncated = False
-            return None, 0, terminated, truncated, None
+            return np.zeros(s.COLS * s.ROWS * 2), 0, terminated, truncated, {}
 
         self.world.do_step(ACTION_MAP[action])
         self.user_input = None
@@ -219,9 +219,8 @@ class CustomEnv(gym.Env):
         return observation, reward, terminated, truncated, game_state # output game_state as info
 
 
-    def reset(self, seed = None):
-        if seed is None:
-            seed = int(self.rng.integers(0, np.iinfo(np.int64).max))
+    def reset(self, **kwargs):
+        seed = int(self.rng.integers(0, np.iinfo(np.int64).max))
         super().reset(seed=seed) # following documentation
         
         self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist

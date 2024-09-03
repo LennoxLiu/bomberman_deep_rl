@@ -39,6 +39,7 @@ def simulate_trajectory(turn_id, rounds=100):
         if agent_win:
             traj_temp = types.TrajectoryWithRew(obs=np.array(temp_obs, dtype=np.uint8), acts=np.array(temp_actions, dtype=np.uint8), rews=np.array(temp_rewards, dtype=np.float32), infos=None, terminal=True)
             traj_list.append(traj_temp)
+            print(temp_rewards)
     
     np.save(f'rule_based_traj/traj_list_{turn_id}.npy', traj_list, allow_pickle=True)
     print('Turn %i done. Time elapsed: %.2f' % (turn_id, time.time() - start_time))
@@ -49,6 +50,7 @@ turns = 100
 num_processes = 14
 
 if __name__ == '__main__':
+########################### Simulate trajectories ###########################
     # start_time = time.time()
     # with Pool(num_processes) as pool:
     #     results = []
@@ -64,6 +66,7 @@ if __name__ == '__main__':
             
     #         time.sleep(30)
 
+########################### Combine all trajectories ###########################
     traj_list_combined = []
     file_list = os.listdir('rule_based_traj')
     for file_name in tqdm(file_list):
