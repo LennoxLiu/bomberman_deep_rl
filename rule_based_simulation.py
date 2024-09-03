@@ -9,7 +9,7 @@ from multiprocessing import Pool
 
 os.makedirs('rule_based_traj', exist_ok=True)
 
-def simulate_trajectory(turn_id, rounds=10):
+def simulate_trajectory(turn_id, rounds=100):
     rule_based_agent = RuleBasedAgent()
     env = gym.make('CustomEnv-v1')
     traj_list = []
@@ -41,12 +41,25 @@ def simulate_trajectory(turn_id, rounds=10):
     
     np.save(f'rule_based_traj/traj_list_{turn_id}.npy', traj_list, allow_pickle=True)
     print('Turn %i done. Time elapsed: %.2f' % (turn_id, time.time() - start_time))
+    
+    return True
 
 turns = 100
-num_processes = 19
+num_processes = 14
 
 if __name__ == '__main__':
     start_time = time.time()
     with Pool(num_processes) as pool:
-        pool.map(simulate_trajectory, range(turns))
+        results = []
+        for i in range(turns):
+            result = pool.apply_async(simulate_trajectory, args=(i,))
+            results.append(result)
+
+        while len(results) > 0 and any([not result.ready() for result in results]):
+            completed = [result.ready() for result in results]
+            percent_complete = sum(completed) / turns * 100
+            if percent_complete > 0:
+                print(f"Progress: {percent_complete:.2f}% , Estimated time remaining: {((time.time() - start_time) / percent_complete) * (100 - percent_complete) /60 :.2f} mins")
+            
+            time.sleep(30)
 
