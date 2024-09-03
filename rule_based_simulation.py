@@ -34,7 +34,7 @@ for i in range(rounds):
     agent_win, other_scores, user_agent_score =env.close()
     
     if agent_win:
-        traj_temp = types.TrajectoryWithRew(obs=np.array(temp_obs,dtype=np.float32), acts=np.array(temp_actions,dtype=np.int64), rews=np.array(temp_rewards,dtype=np.float32), infos=None, terminal=True)
+        traj_temp = types.TrajectoryWithRew(obs=np.array(temp_obs,dtype=np.uint8), acts=np.array(temp_actions,dtype=np.uint8), rews=np.array(temp_rewards,dtype=np.float32), infos=None, terminal=True)
         print(isinstance(traj_temp, types.TrajectoryWithRew))
 
         traj_list.append(traj_temp)
