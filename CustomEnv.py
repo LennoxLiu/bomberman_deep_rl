@@ -250,10 +250,11 @@ class CustomEnv(gym.Env):
             else:
                 user_agent_score = a.total_score
 
+        self.world.end()
+
+        for a in self.world.agents:
             # reset all agents
             a.reset()
-
-        self.world.end()
 
         return user_agent_score > max(other_scores), other_scores, user_agent_score # return True if user_agent wins
 

@@ -19,42 +19,39 @@ from gymnasium import spaces
 
 SEED = 42
 
-env = make_vec_env(
-    "seals:seals/CartPole-v0",
-    rng=np.random.default_rng(SEED),
-    n_envs=8,
-    post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
-)
-expert = load_policy(
-    "ppo-huggingface",
-    organization="HumanCompatibleAI",
-    env_name="seals-CartPole-v0",
-    venv=env,
-)
-rollouts = rollout.rollout(
-    expert,
-    env,
-    rollout.make_sample_until(min_timesteps=None, min_episodes=60),
-    rng=np.random.default_rng(SEED),
-)
-
-print(type(rollouts))
-print(type(rollouts[0]))
-exit(0)
 # env = make_vec_env(
-#     'CustomEnv-v1',
+#     "seals:seals/CartPole-v0",
 #     rng=np.random.default_rng(SEED),
 #     n_envs=8,
 #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
 # )
+# expert = load_policy(
+#     "ppo-huggingface",
+#     organization="HumanCompatibleAI",
+#     env_name="seals-CartPole-v0",
+#     venv=env,
+# )
+# rollouts = rollout.rollout(
+#     expert,
+#     env,
+#     rollout.make_sample_until(min_timesteps=None, min_episodes=60),
+#     rng=np.random.default_rng(SEED),
+# )
 
+# print(type(rollouts))
+# print(type(rollouts[0]))
+# exit(0)
 
-# observation = [[i+1,0,i] for i in range(4)]
-# action = [i for i in range(3)]
-# reward = [i/2 for i in range(3)]
-# trajectory = types.TrajectoryWithRew(obs=np.array(observation,dtype=np.float32), acts=np.array(action,dtype=np.int64), rews=np.array(reward,dtype=np.float32), infos=None, terminal=True)
+################## test format of rollouts ##################
 
-# print(isinstance(trajectory, types.TrajectoryWithRew))
+env = make_vec_env(
+    'CustomEnv-v1',
+    rng=np.random.default_rng(SEED),
+    n_envs=8,
+    post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
+)
+
+rollouts = np.load("rule_based_traj/rule_based_traj_combined.npy", allow_pickle=True)
 
 learner = PPO(
     env=env,

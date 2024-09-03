@@ -6,6 +6,7 @@ import gymnasium as gym
 from imitation.data import types
 import os
 from multiprocessing import Pool
+from tqdm import tqdm
 
 os.makedirs('rule_based_traj', exist_ok=True)
 
@@ -48,18 +49,27 @@ turns = 100
 num_processes = 14
 
 if __name__ == '__main__':
-    start_time = time.time()
-    with Pool(num_processes) as pool:
-        results = []
-        for i in range(turns):
-            result = pool.apply_async(simulate_trajectory, args=(i,))
-            results.append(result)
+    # start_time = time.time()
+    # with Pool(num_processes) as pool:
+    #     results = []
+    #     for i in range(turns):
+    #         result = pool.apply_async(simulate_trajectory, args=(i,))
+    #         results.append(result)
 
-        while len(results) > 0 and any([not result.ready() for result in results]):
-            completed = [result.ready() for result in results]
-            percent_complete = sum(completed) / turns * 100
-            if percent_complete > 0:
-                print(f"Progress: {percent_complete:.2f}% , Estimated time remaining: {((time.time() - start_time) / percent_complete) * (100 - percent_complete) /60 :.2f} mins")
+    #     while len(results) > 0 and any([not result.ready() for result in results]):
+    #         completed = [result.ready() for result in results]
+    #         percent_complete = sum(completed) / turns * 100
+    #         if percent_complete > 0:
+    #             print(f"Progress: {percent_complete:.2f}% , Estimated time remaining: {((time.time() - start_time) / percent_complete) * (100 - percent_complete) /60 :.2f} mins")
             
-            time.sleep(30)
+    #         time.sleep(30)
 
+    traj_list_combined = []
+    file_list = os.listdir('rule_based_traj')
+    for file_name in tqdm(file_list):
+        if file_name.endswith('.npy'):
+            file_path = os.path.join('rule_based_traj', file_name)
+            traj_list = np.load(file_path, allow_pickle=True)
+            traj_list_combined.extend(traj_list)
+
+    np.save('rule_based_traj_combined.npy', traj_list_combined, allow_pickle=True)
