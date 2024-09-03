@@ -4,7 +4,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box, MultiDiscrete
+from gymnasium import spaces
 import settings as s
 import events as e
 import agents
@@ -18,38 +18,43 @@ from imitation.data.wrappers import RolloutInfoWrapper
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-        observation = {}
-        one_array = np.ones(s.COLS * s.ROWS)
+        observation = None
+        one_array = np.ones(s.COLS * s.ROWS*2)
         # 0: stone walls, 1: free tiles, 2: crates, 
-        observation["field"] = game_state["field"].astype(np.uint8) + 1
+        field = game_state["field"].astype(np.uint8) + 1
         #3: coins,
         for coin in game_state["coins"]:
-            observation["field"][coin] = 3
+            field[coin] = 3
         # 4: no bomb opponents, 5: has bomb opponents,
         for other in game_state["others"]:
             if other[2] == False: # bombs_left == False
-                observation["field"][other[3]] = 4
+                field[other[3]] = 4
             else:
-                observation["field"][other[3]] = 5
+                field[other[3]] = 5
 
-        # 7~7+s.EXPLOSION_TIMER: explosion map
-        explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
-        
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        field[game_state['self'][3]] = 6 if game_state['self'][2] == False else 7
+
+        # 0: nothing
+        # 1~s.EXPLOSION_TIMER: explosion map
+        explosion_field = game_state["explosion_map"].astype(np.uint8)
+        # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
+            explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER # overlay bomb on explosion
         
-        # 6: self (needs to be present at any time)
-        observation["field"][game_state["self"][3]] = 6
-
-        observation["field"] = observation["field"].flatten()
-        assert MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8).contains(observation["field"])
-
-        observation["bomb_possible"] = int(game_state["self"][2])
+        # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 2 opponents
+        for other in game_state["others"]:
+            explosion_field[other[3]] = s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 2
         
-        assert spaces.Dict({"field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
+        # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3 self
+        explosion_field[game_state['self'][3]] = s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3
+        
+        # print("explosion_field in Env: \n",explosion_field)
+        
+        field = field.flatten()
+        explosion_field = explosion_field.flatten()
+        observation = np.concatenate((field, explosion_field)).flatten()
+
+        assert spaces.MultiDiscrete(nvec=one_array * (max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4)), dtype = np.uint8).contains(observation)
 
         return observation
 
@@ -63,23 +68,21 @@ class CustomEnv(gym.Env):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
-        self.trajectory = []
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
-        one_array = np.ones(s.COLS * s.ROWS)
-        self.observation_space = spaces.Dict(
-            {
-                "field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),
-                # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
-                # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
-                "bomb_possible": spaces.Discrete(2)
-            }
-        )
+        one_array = np.ones(s.COLS * s.ROWS * 2)
+        self.observation_space = spaces.MultiDiscrete(nvec=one_array * (max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4)), dtype = np.uint8)
+            # observation space consists of two parts
+            # first part is the field without bomb
+            # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
+            # 4: no bomb opponents, 5: has bomb opponents,
+            # 6: self, 7: self with bomb
+
+            # second part is the explosion_map with bomb
+            # 0: nothing
+            # 1~s.EXPLOSION_TIMER: explosion map
+            # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
@@ -149,18 +152,16 @@ class CustomEnv(gym.Env):
         
         # escape from explosion reward
         escape_bomb_reward = 0
-        if len(self.trajectory) > 0:
-            x, y = self.trajectory[-1] # last position
-            x_now, y_now =current_pos
-            # Add proposal to run away from any nearby bomb about to blow
-            for (xb, yb), t in game_state['bombs']:
-                # if now in bomb range
-                if in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward -= 0.000666
+        x_now, y_now = current_pos
+        # Add proposal to run away from any nearby bomb about to blow
+        for (xb, yb), t in game_state['bombs']:
+            # if now in bomb range
+            if in_bomb_range(xb,yb,x_now,y_now):
+                escape_bomb_reward -= 0.000666
 
-                # If agent is in a safe cell when there is a bomb nearby
-                if self.manhattan_distance((xb,yb),(x_now,y_now)) < s.BOMB_POWER + 2 and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 0.002
+            # If agent is in a safe cell when there is a bomb nearby
+            if self.manhattan_distance((xb,yb),(x_now,y_now)) < s.BOMB_POWER + 2 and not in_bomb_range(xb,yb,x_now,y_now):
+                escape_bomb_reward += 0.002
         
         
         index=0
@@ -214,8 +215,7 @@ class CustomEnv(gym.Env):
             elif event == e.SURVIVED_ROUND:
                 reward += 1.0
 
-        reward =-0.01 # penalty per iteration
-        self.trajectory.append(current_pos)
+        reward -= 0.01 # penalty per iteration
         return observation, reward, terminated, truncated, game_state # output game_state as info
 
 
@@ -224,7 +224,8 @@ class CustomEnv(gym.Env):
             seed = int(self.rng.integers(0, np.iinfo(np.int64).max))
         super().reset(seed=seed) # following documentation
         
-        self.trajectory = []
+        self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
+        
         # start a new round
         self.world.new_round()
 
@@ -268,13 +269,13 @@ register(
 # tmp_env = gym.make('CustomEnv-v1')
 
 if __name__ == "__main__":
-    # env = CustomEnv()
+    env = CustomEnv()
     # It will check your custom environment and output additional warnings if needed
-    # check_env(env)
+    check_env(env)
 
-    env = make_vec_env(
-    'CustomEnv-v1',
-    rng=np.random.default_rng(42),
-    n_envs=8,
-    post_wrappers=[lambda env, env_idx: RolloutInfoWrapper(env)],  # to compute rollouts
-)
+#     env = make_vec_env(
+#     'CustomEnv-v1',
+#     rng=np.random.default_rng(42),
+#     n_envs=8,
+#     post_wrappers=[lambda env, env_idx: RolloutInfoWrapper(env)],  # to compute rollouts
+# )
