@@ -19,25 +19,34 @@ from gymnasium import spaces
 
 SEED = 42
 
-# env = make_vec_env(
-#     "seals:seals/CartPole-v0",
-#     rng=np.random.default_rng(SEED),
-#     n_envs=8,
-#     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
-# )
-# expert = load_policy(
-#     "ppo-huggingface",
-#     organization="HumanCompatibleAI",
-#     env_name="seals-CartPole-v0",
-#     venv=env,
-# )
-
 env = make_vec_env(
-    'CustomEnv-v1',
+    "seals:seals/CartPole-v0",
     rng=np.random.default_rng(SEED),
     n_envs=8,
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
 )
+expert = load_policy(
+    "ppo-huggingface",
+    organization="HumanCompatibleAI",
+    env_name="seals-CartPole-v0",
+    venv=env,
+)
+rollouts = rollout.rollout(
+    expert,
+    env,
+    rollout.make_sample_until(min_timesteps=None, min_episodes=60),
+    rng=np.random.default_rng(SEED),
+)
+
+print(type(rollouts))
+print(type(rollouts[0]))
+exit(0)
+# env = make_vec_env(
+#     'CustomEnv-v1',
+#     rng=np.random.default_rng(SEED),
+#     n_envs=8,
+#     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
+# )
 
 
 # observation = [[i+1,0,i] for i in range(4)]

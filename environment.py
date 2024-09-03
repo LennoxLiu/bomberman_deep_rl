@@ -516,7 +516,13 @@ class BombeRLeWorld(GenericWorld):
         for a in self.agents:
             # Send exit message to shut down agent
             self.logger.debug(f'Sending exit message to agent <{a.name}>')
-            # todo multiprocessing shutdown
+            
+            # reset all agents
+            a.reset()
+
+        # reset all states
+        self.round = 0
+        self.round_statistics = {}
 
 
 class GUI:

@@ -105,6 +105,7 @@ class CustomEnv(gym.Env):
                 self.my_agent = a
         assert isinstance(self.my_agent, agents.Agent)
 
+        self.rng = np.random.default_rng(42)
         # start a new round
         self.world.new_round()
 
@@ -219,6 +220,8 @@ class CustomEnv(gym.Env):
 
 
     def reset(self, seed = None):
+        if seed is None:
+            seed = int(self.rng.integers(0, np.iinfo(np.int64).max))
         super().reset(seed=seed) # following documentation
         
         self.trajectory = []
@@ -246,9 +249,12 @@ class CustomEnv(gym.Env):
             else:
                 user_agent_score = a.total_score
 
+            # reset all agents
+            a.reset()
+
         self.world.end()
 
-        return user_agent_score > max(other_scores) # return True if user_agent wins
+        return user_agent_score > max(other_scores), other_scores, user_agent_score # return True if user_agent wins
 
 
 from gymnasium import register

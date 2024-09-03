@@ -73,11 +73,12 @@ class RuleBasedAgent():
             current = parent_dict[current]
 
 
-    def reset_self(self):
+    def reset(self):
         self.bomb_history = deque([], 5)
         self.coordinate_history = deque([], 20)
         # While this timer is positive, agent will not hunt/attack opponents
         self.ignore_others_timer = 0
+        self.current_round = 0
 
 
     def act(self, game_state):
@@ -90,7 +91,7 @@ class RuleBasedAgent():
         """
         # Check if we are in a different round
         if game_state["round"] != self.current_round:
-            self.reset_self()
+            self.reset()
             self.current_round = game_state["round"]
         # Gather information about the game state
         arena = game_state['field']

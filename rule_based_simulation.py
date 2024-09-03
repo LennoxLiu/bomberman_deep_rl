@@ -1,18 +1,19 @@
+import numpy as np
 from RuleBasedAgent import RuleBasedAgent
 import CustomEnv
 import gymnasium as gym
+from imitation.data import types
 
 rule_based_agent = RuleBasedAgent()
 env = gym.make('CustomEnv-v1')
 
-rounds = 100
-obs_list = []
-actions_list = []
-rewards_list = []
+rounds = 50
+traj_list = []
+rng = np.random.default_rng(42)
 for i in range(rounds):
-    observation, game_state = env.reset()
+    observation, game_state = env.reset(seed=None) # When seed = None, it will randomly generate new seeds in reset()
     temp_obs = [observation]
-    rule_based_agent.reset_self()
+    rule_based_agent.reset()
     temp_actions = []
     temp_rewards = []
 
@@ -27,13 +28,22 @@ for i in range(rounds):
             temp_actions.append(action)
             temp_obs.append(observation)
             temp_rewards.append(reward)
-    
-    agent_win=env.close()
+
+        print(observation, action,reward)
+
+    agent_win, other_scores, user_agent_score =env.close()
     
     if agent_win:
-        obs_list.append(temp_obs)
-        actions_list.append(temp_actions)
-        rewards_list.append(temp_rewards)
-        print("current trajs:",len(obs_list))
+        traj_temp = types.TrajectoryWithRew(obs=np.array(temp_obs,dtype=np.float32), acts=np.array(temp_actions,dtype=np.int64), rews=np.array(temp_rewards,dtype=np.float32), infos=None, terminal=True)
+        print(isinstance(traj_temp, types.TrajectoryWithRew))
 
-print("total trajs:",len(obs_list))
+        traj_list.append(traj_temp)
+        print("current trajs:",len(traj_list))
+        # print("user score:",user_agent_score, "other scores:",other_scores)
+    # else:
+    #     print("agent lose")
+        # print("user score:",user_agent_score, "other scores:",other_scores)
+    
+print("total trajs:",len(traj_list))
+
+

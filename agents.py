@@ -189,6 +189,28 @@ class Agent:
         screen.blit(self.avatar, (x, y))
         if self.dead:
             screen.blit(self.shade, (x, y))
+    
+    def reset(self):
+        self.total_score = 0
+
+        self.dead = None
+        self.score = None
+
+        self.statistics = None
+        self.lifetime_statistics = defaultdict(int)
+        self.trophies = None
+
+        self.events = None
+        self.available_think_time = None
+
+        self.x = None
+        self.y = None
+        self.bombs_left = None
+
+        self.last_game_state = None
+        self.last_action = None
+
+        self.setup()
 
 
 class AgentRunner:
