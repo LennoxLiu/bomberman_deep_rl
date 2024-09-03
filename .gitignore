@@ -113,3 +113,4 @@ replays/
 results/
 /Original
 /rule_based_traj
+*.npy
