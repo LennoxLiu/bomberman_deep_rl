@@ -1,3 +1,5 @@
+from random import random
+import string
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -10,6 +12,8 @@ import agents
 import main
 from fallbacks import pygame, LOADED_PYGAME
 import math
+from imitation.util.util import make_vec_env
+from imitation.data.wrappers import RolloutInfoWrapper
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
@@ -55,7 +59,7 @@ class CustomEnv(gym.Env):
 
     # metadata = {"render_modes": ["default"], "render_fps": 30}
 
-    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent"]}):
+    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1"]}):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
@@ -105,17 +109,6 @@ class CustomEnv(gym.Env):
         self.world.new_round()
 
 
-    def my_render(self, wait_until_due):
-        # If every step should be displayed, wait until it is due to be shown
-        if wait_until_due:
-            self.gui_timekeeper.wait()
-
-        if self.gui_timekeeper.is_due():
-            self.gui_timekeeper.note()
-            # Render (which takes time)
-            self.gui.render()
-            pygame.display.flip()
-
     def manhattan_distance(self, point1, point2):
         x1, y1 = point1
         x2, y2 = point2
@@ -123,6 +116,15 @@ class CustomEnv(gym.Env):
         return distance
 
     def step(self, action):
+        # terminated or trunctated
+        if self.world.running == False:
+            terminated = True
+            if self.world.step == s.MAX_STEPS:
+                truncated = True
+            else:
+                truncated = False
+            return None, 0, terminated, truncated, None
+
         self.world.do_step(ACTION_MAP[action])
         self.user_input = None
 
@@ -137,11 +139,6 @@ class CustomEnv(gym.Env):
             # death_reward = -0.5 # deal with this later
         
         observation = fromStateToObservation(game_state)
-
-        # terminated or trunctated
-        if self.world.running == False:
-            if self.world.step == s.MAX_STEPS:
-                terminated = True
         
         current_pos = game_state["self"][3]
         
@@ -218,7 +215,7 @@ class CustomEnv(gym.Env):
 
         reward =-0.01 # penalty per iteration
         self.trajectory.append(current_pos)
-        return observation, reward, terminated, truncated, {"events" : self.my_agent.events}
+        return observation, reward, terminated, truncated, game_state # output game_state as info
 
 
     def reset(self, seed = None):
@@ -232,7 +229,7 @@ class CustomEnv(gym.Env):
         game_state = self.world.get_state_for_agent(self.my_agent)
         observation = fromStateToObservation(game_state)
 
-        return observation, {"info": "reset"}
+        return observation, game_state # output game_state as info
     
 
     def render(self):
@@ -241,15 +238,21 @@ class CustomEnv(gym.Env):
 
 
     def close(self):
-        if self.make_video:
-            self.gui.make_video()
-        
-        # Can render end screen until next round is queried
-        
+        other_scores = []
+        user_agent_score = 0
+        for a in self.world.agents:
+            if a.name != "user_agent":
+                other_scores.append(a.total_score)
+            else:
+                user_agent_score = a.total_score
+
         self.world.end()
+
+        return user_agent_score > max(other_scores) # return True if user_agent wins
 
 
 from gymnasium import register
+import os
 
 register(
     id='CustomEnv-v1',  # Unique identifier for the environment
@@ -259,6 +262,13 @@ register(
 # tmp_env = gym.make('CustomEnv-v1')
 
 if __name__ == "__main__":
-    env = CustomEnv()
+    # env = CustomEnv()
     # It will check your custom environment and output additional warnings if needed
-    check_env(env)
+    # check_env(env)
+
+    env = make_vec_env(
+    'CustomEnv-v1',
+    rng=np.random.default_rng(42),
+    n_envs=8,
+    post_wrappers=[lambda env, env_idx: RolloutInfoWrapper(env)],  # to compute rollouts
+)

@@ -500,7 +500,8 @@ class BombeRLeWorld(GenericWorld):
         # Send final event to agents that expect them
         for a in self.agents:
             # if a.train:
-            a.round_ended()
+            if a.name == "user_agent":
+                a.round_ended()
 
         # Save course of the game for future replay
         if self.args.save_replay:

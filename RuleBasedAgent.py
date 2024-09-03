@@ -1,5 +1,6 @@
 from collections import deque
-from random import shuffle
+from random import random, shuffle
+import string
 
 import numpy as np
 
@@ -22,6 +23,7 @@ class RuleBasedAgent():
         # While this timer is positive, agent will not hunt/attack opponents
         self.ignore_others_timer = 0
         self.current_round = 0
+
 
     def look_for_targets(self, free_space, start, targets):
         """Find direction of closest target that can be reached via free tiles.

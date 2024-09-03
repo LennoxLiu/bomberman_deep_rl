@@ -1,3 +1,4 @@
+from imitation.data import types
 import numpy as np
 import gymnasium as gym
 from stable_baselines3 import PPO
@@ -11,10 +12,25 @@ from imitation.policies.serialize import load_policy
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
-from CustomEnv import CustomEnv
-from rult_based_policy import RuleBasedPolicy
+from CustomEnv import ACTION_MAP, CustomEnv
+from gymnasium.spaces import MultiDiscrete
+import settings as s
+from gymnasium import spaces
 
 SEED = 42
+
+# env = make_vec_env(
+#     "seals:seals/CartPole-v0",
+#     rng=np.random.default_rng(SEED),
+#     n_envs=8,
+#     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
+# )
+# expert = load_policy(
+#     "ppo-huggingface",
+#     organization="HumanCompatibleAI",
+#     env_name="seals-CartPole-v0",
+#     venv=env,
+# )
 
 env = make_vec_env(
     'CustomEnv-v1',
@@ -22,18 +38,14 @@ env = make_vec_env(
     n_envs=8,
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
 )
-# expert = load_policy(
-#     policy_type='rule_based'
-#     venv=env,
-#     options = {"argv": ["play","--no-gui","--my-agent","rule_based_agent"]}
-# )
-expert = RuleBasedPolicy()
-rollouts = rollout.rollout(
-    expert,
-    env,
-    rollout.make_sample_until(min_timesteps=None, min_episodes=60),
-    rng=np.random.default_rng(SEED),
-)
+
+
+# observation = [[i+1,0,i] for i in range(4)]
+# action = [i for i in range(3)]
+# reward = [i/2 for i in range(3)]
+# trajectory = types.TrajectoryWithRew(obs=np.array(observation,dtype=np.float32), acts=np.array(action,dtype=np.int64), rews=np.array(reward,dtype=np.float32), infos=None, terminal=True)
+
+# print(isinstance(trajectory, types.TrajectoryWithRew))
 
 learner = PPO(
     env=env,
