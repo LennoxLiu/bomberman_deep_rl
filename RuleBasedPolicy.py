@@ -1,6 +1,5 @@
 
 from stable_baselines3.common import policies
-from CustomEnv import fromStateToObservation
 from collections import deque
 from random import shuffle
 import numpy as np
@@ -16,7 +15,7 @@ class RuleBasedPolicy(policies.BasePolicy):
         self.rule_based_agent = RuleBasedAgent(has_memory=False)
         
 
-    def _predict(self, observation, deterministic: bool = True) -> th.Tensor:
+    def _predict(self, observation: th.Tensor, deterministic: bool = True) -> th.Tensor:
         """
         Get the action according to the policy for a given observation.
 
@@ -27,4 +26,8 @@ class RuleBasedPolicy(policies.BasePolicy):
         :param deterministic: Whether to use stochastic or deterministic actions
         :return: Taken action according to the policy
         """
-        return ACTION_MAP[self.rule_based_agent.act(observation)]
+
+        # Get the stacked actions
+        return th.tensor([ACTION_MAP.index(self.rule_based_agent.act(observation[i])) for i in range(observation.shape[0])], dtype=th.int8)
+
+        

@@ -11,7 +11,6 @@ from torch import device
 from torch.cuda import is_available
 
 my_device = device("cuda" if is_available() else "cpu")
-my_device = device("cpu")
 print("Using device:", my_device)
 
 rng = np.random.default_rng(0)

@@ -1,0 +1,2 @@
+For DAgger trainer, it won't work with GPU unless you fix a bug reported here : https://github.com/HumanCompatibleAI/imitation/issues/820
+And then reinstall imitation from source code.
