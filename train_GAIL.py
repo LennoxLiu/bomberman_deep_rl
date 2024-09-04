@@ -13,12 +13,13 @@ from imitation.policies.serialize import load_policy
 from imitation.rewards.reward_nets import BasicRewardNet
 from imitation.util.networks import RunningNorm
 from imitation.util.util import make_vec_env
-import torch
 from CustomEnv import ACTION_MAP, CustomEnv
 from imitation.util import logger as imit_logger
 from imitation.scripts.train_adversarial import save
 from test_win_rate import test_against_RuleBasedAgent
-import torch as th
+from torch.nn import ReLU
+from torch import device
+from torch.cuda import is_available
 
 remove_logs_checkpoints = input("Do you want to remove existing 'logs' and 'checkpoints' folders? (y/n): ")
 if remove_logs_checkpoints.lower() == 'y':
@@ -30,8 +31,8 @@ if remove_logs_checkpoints.lower() == 'y':
 
 
 SEED = 42
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Using device:", device)
+my_device = device("cuda" if is_available() else "cpu")
+print("Using device:", my_device)
 
 custom_logger = imit_logger.configure(
         folder='logs',
@@ -114,7 +115,7 @@ else:
         n_epochs=configs['learner']['n_epochs'],
         seed=SEED,
         tensorboard_log='./logs/learner/',
-        policy_kwargs= dict(activation_fn=th.nn.ReLU, net_arch=dict(\
+        policy_kwargs= dict(activation_fn=ReLU, net_arch=dict(\
             pi=configs['learner']['policy_kwargs']['pi'], \
             vf=configs['learner']['policy_kwargs']['vf'])),
         )
