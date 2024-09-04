@@ -36,10 +36,11 @@ def simulate_trajectory(turn_id, rounds=100):
 
         agent_win, other_scores, user_agent_score = env.close()
         
+        print("len(actions):",len(temp_actions))
         if agent_win:
             traj_temp = types.TrajectoryWithRew(obs=np.array(temp_obs, dtype=np.uint8), acts=np.array(temp_actions, dtype=np.uint8), rews=np.array(temp_rewards, dtype=np.float32), infos=None, terminal=True)
             traj_list.append(traj_temp)
-            print(temp_rewards)
+            # print(temp_rewards)
     
     np.save(f'rule_based_traj/traj_list_{turn_id}.npy', traj_list, allow_pickle=True)
     print('Turn %i done. Time elapsed: %.2f' % (turn_id, time.time() - start_time))
@@ -50,6 +51,7 @@ turns = 100
 num_processes = 14
 
 if __name__ == '__main__':
+    simulate_trajectory(0, rounds=10)
 ########################### Simulate trajectories ###########################
     # start_time = time.time()
     # with Pool(num_processes) as pool:
@@ -78,5 +80,36 @@ if __name__ == '__main__':
     # np.save('rule_based_traj_combined.npy', traj_list_combined, allow_pickle=True)
 
 ########################## Look at data ##########################
-    traj = np.load("rule_based_traj/rule_based_traj_combined.npy", allow_pickle=True).tolist()
-    
+    # traj = np.load("rule_based_traj/rule_based_traj_combined.npy", allow_pickle=True).tolist()
+
+    # act_length = []
+    # rew_sum = []
+    # for i in range(len(traj)):
+    #     act_length.append(len(traj[i].acts))
+    #     if len(traj[i].rews) == 400:
+    #         rew_sum.append(np.sum(traj[i].rews))
+
+    # import matplotlib.pyplot as plt
+
+    # # Draw histogram of action lengths
+    # plt.figure()
+    # plt.hist(act_length, bins=20)
+    # plt.xlabel('Action Length')
+    # plt.ylabel('Frequency')
+    # plt.title('Histogram of Action Lengths')
+    # plt.savefig('rule_based_traj/hist_act_length.png')
+    # plt.show()
+
+    # # Draw histogram of reward means
+    # plt.figure()
+    # plt.hist(rew_sum, bins=20)
+    # plt.xlabel('Reward Mean')
+    # plt.ylabel('Frequency')
+    # plt.title('Histogram of Reward Sums')
+    # plt.savefig('rule_based_traj/hist_rew_sum-400steps.png')
+    # plt.show()
+
+################# Filter data, keep only steps with 400 steps #################
+    # traj = np.load("rule_based_traj/rule_based_traj_combined.npy", allow_pickle=True).tolist()
+    # traj_filtered = [traj[i] for i in range(len(traj)) if len(traj[i].acts) == 400]
+    # np.save('rule_based_traj/rule_based_traj_filtered.npy', traj_filtered, allow_pickle=True)
