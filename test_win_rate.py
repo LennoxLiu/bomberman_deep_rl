@@ -63,7 +63,7 @@ if __name__ == '__main__':
     #     path="checkpoints/checkpoint00006/gen_policy/model"
     # )
 
-    # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(),1, rule_based_agent=True,verbose=True))
+    # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
     # exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
     turns = 10
@@ -72,7 +72,7 @@ if __name__ == '__main__':
     with Pool(num_processes) as pool:
         results = []
         for i in range(turns):
-            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,RuleBasedAgent(),20,True,True))
+            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,RuleBasedAgent(has_memory=False),20,True,True))
             results.append(result)
 
         # while len(results) > 0 and any([not result.ready() for result in results]):

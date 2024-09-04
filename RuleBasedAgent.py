@@ -8,7 +8,7 @@ from CustomEnv import fromObservationToState
 import settings as s
 
 class RuleBasedAgent():
-    def __init__(self):
+    def __init__(self, has_memory = True):
         """Called once before a set of games to initialize data structures etc.
 
         The 'self' object passed to this method will be the same in all other
@@ -18,12 +18,14 @@ class RuleBasedAgent():
         file for debugging (see https://docs.python.org/3.7/library/logging.html).
         """
         np.random.seed()
-        # Fixed length FIFO queues to avoid repeating the same actions
-        self.bomb_history = deque([], 5)
-        self.coordinate_history = deque([], 20)
-        # While this timer is positive, agent will not hunt/attack opponents
-        self.ignore_others_timer = 0
-        self.current_round = 0
+        self.has_memory = has_memory
+        if has_memory:
+            # Fixed length FIFO queues to avoid repeating the same actions
+            self.bomb_history = deque([], 5)
+            self.coordinate_history = deque([], 20)
+            # While this timer is positive, agent will not hunt/attack opponents
+            self.ignore_others_timer = 0
+            self.current_round = 0
 
 
     def look_for_targets(self, free_space, start, targets):
@@ -75,11 +77,12 @@ class RuleBasedAgent():
 
 
     def reset(self):
-        self.bomb_history = deque([], 5)
-        self.coordinate_history = deque([], 20)
-        # While this timer is positive, agent will not hunt/attack opponents
-        self.ignore_others_timer = 0
-        self.current_round = 0
+        if self.has_memory:
+            self.bomb_history = deque([], 5)
+            self.coordinate_history = deque([], 20)
+            # While this timer is positive, agent will not hunt/attack opponents
+            self.ignore_others_timer = 0
+            self.current_round = 0
 
 
     def act(self, observation):
@@ -91,11 +94,12 @@ class RuleBasedAgent():
         what it contains.
         """
         game_state = fromObservationToState(observation)
-        # print("game_state in agent:", game_state)
-        # # Check if we are in a different round
-        # if game_state["round"] != self.current_round:
-        #     self.reset()
-        #     self.current_round = game_state["round"]
+
+        if self.has_memory:
+            # Check if we are in a different round
+            if game_state["round"] != self.current_round:
+                self.reset()
+                self.current_round = game_state["round"]
 
         # Gather information about the game state
         arena = game_state['field']
@@ -110,12 +114,13 @@ class RuleBasedAgent():
                 if (0 < i < bomb_map.shape[0]) and (0 < j < bomb_map.shape[1]):
                     bomb_map[i, j] = min(bomb_map[i, j], t)
 
-        # If agent has been in the same location three times recently, it's a loop
-        if self.coordinate_history.count((x, y)) > 2:
-            self.ignore_others_timer = 5
-        else:
-            self.ignore_others_timer -= 1
-        self.coordinate_history.append((x, y))
+        if self.has_memory:
+            # If agent has been in the same location three times recently, it's a loop
+            if self.coordinate_history.count((x, y)) > 2:
+                self.ignore_others_timer = 5
+            else:
+                self.ignore_others_timer -= 1
+            self.coordinate_history.append((x, y))
 
         # Check which moves make sense at all
         directions = [(x, y), (x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)]
@@ -132,8 +137,12 @@ class RuleBasedAgent():
         if (x, y - 1) in valid_tiles: valid_actions.append('UP')
         if (x, y + 1) in valid_tiles: valid_actions.append('DOWN')
         if (x, y) in valid_tiles: valid_actions.append('WAIT')
-        # Disallow the BOMB action if agent dropped a bomb in the same spot recently
-        if (bombs_left > 0) and (x, y) not in self.bomb_history: valid_actions.append('BOMB')
+        
+        if self.has_memory:
+            # Disallow the BOMB action if agent dropped a bomb in the same spot recently
+            if (bombs_left > 0) and (x, y) not in self.bomb_history: valid_actions.append('BOMB')
+        else:
+            if (bombs_left > 0): valid_actions.append('BOMB')
         
         # Collect basic action proposals in a queue
         # Later on, the last added action that is also valid will be chosen
@@ -148,7 +157,10 @@ class RuleBasedAgent():
         crates = [(x, y) for x in cols for y in rows if (arena[x, y] == 1)]
         targets = coins + dead_ends + crates
         # Add other agents as targets if in hunting mode or no crates/coins left
-        if self.ignore_others_timer <= 0 or (len(crates) + len(coins) == 0):
+        if self.has_memory:
+            if self.ignore_others_timer <= 0 or (len(crates) + len(coins) == 0):
+                targets.extend(others)
+        elif (len(crates) + len(coins) == 0):
             targets.extend(others)
 
         # Exclude targets that are currently occupied by a bomb
@@ -156,7 +168,11 @@ class RuleBasedAgent():
 
         # Take a step towards the most immediately interesting target
         free_space = arena == 0
-        if self.ignore_others_timer > 0:
+        if self.has_memory:
+            if self.ignore_others_timer > 0:
+                for o in others:
+                    free_space[o] = False
+        else:
             for o in others:
                 free_space[o] = False
         d = self.look_for_targets(free_space, (x, y), targets)
