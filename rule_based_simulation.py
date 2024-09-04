@@ -67,12 +67,16 @@ if __name__ == '__main__':
     #         time.sleep(30)
 
 ########################### Combine all trajectories ###########################
-    traj_list_combined = []
-    file_list = os.listdir('rule_based_traj')
-    for file_name in tqdm(file_list):
-        if file_name.endswith('.npy'):
-            file_path = os.path.join('rule_based_traj', file_name)
-            traj_list = np.load(file_path, allow_pickle=True)
-            traj_list_combined.extend(traj_list)
+    # traj_list_combined = []
+    # file_list = os.listdir('rule_based_traj')
+    # for file_name in tqdm(file_list):
+    #     if file_name.endswith('.npy'):
+    #         file_path = os.path.join('rule_based_traj', file_name)
+    #         traj_list = np.load(file_path, allow_pickle=True)
+    #         traj_list_combined.extend(traj_list)
 
-    np.save('rule_based_traj_combined.npy', traj_list_combined, allow_pickle=True)
+    # np.save('rule_based_traj_combined.npy', traj_list_combined, allow_pickle=True)
+
+########################## Look at data ##########################
+    traj = np.load("rule_based_traj/rule_based_traj_combined.npy", allow_pickle=True).tolist()
+    

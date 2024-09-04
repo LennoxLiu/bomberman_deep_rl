@@ -114,3 +114,5 @@ results/
 /Original
 /rule_based_traj
 *.npy
+/checkpoints
+/logs
