@@ -12,6 +12,7 @@ from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.policies.serialize import load_policy
 from imitation.util.util import make_vec_env
 from torch import device
+import torch
 from torch.cuda import is_available
 from imitation.util import logger as imit_logger
 from imitation.scripts.train_adversarial import save
@@ -24,6 +25,7 @@ from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
 import torch.nn as nn
 from gymnasium import spaces
 import torch as th
+import settings as s
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -83,29 +85,48 @@ class CustomCNN(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: spaces.MultiDiscrete, features_dim: int = 256):
-        super().__init__(observation_space, features_dim)
-        # We assume CxHxW images (channels first)
-        # Re-ordering will be done by pre-preprocessing or wrapper
-        n_input_channels = observation_space.shape[0]
-        self.cnn = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+    def __init__(self, observation_space: spaces.MultiDiscrete, features_dim = [128, 64]):
+        super().__init__(observation_space, features_dim=sum(features_dim))
+        # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
+        n_input_channels = 1
+        self.cnn1 = nn.Sequential(
+            nn.Conv2d(n_input_channels, 64, kernel_size=4, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+            nn.Conv2d(64, 64, kernel_size=2, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+        self.cnn2 = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=4, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(32, 32, kernel_size=2, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
 
         # Compute shape by doing one forward pass
         with th.no_grad():
-            n_flatten = self.cnn(
-                th.as_tensor(observation_space.sample()[None]).float()
+            n_flatten1 = self.cnn1(
+                th.as_tensor(observation_space.sample().reshape(2, 1, s.ROWS, s.COLS)).float()
+            ).shape[1]
+            n_flatten2 = self.cnn2(
+                th.as_tensor(observation_space.sample().reshape(2, 1, s.ROWS, s.COLS)).float()
             ).shape[1]
 
-        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+        self.linear1 = nn.Sequential(nn.Linear(n_flatten1, features_dim[0]), nn.ReLU())
+        self.linear2 = nn.Sequential(nn.Linear(n_flatten2, features_dim[1]), nn.ReLU())
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        return self.linear(self.cnn(observations))
+        print("observations.shape:", observations.shape)
+        obs1, obs2 = observations[:,:s.ROWS*s.COLS], observations[:, s.ROWS*s.COLS:]
+        print("obs1.shape:", obs1.shape)
+        print("obs2.shape:", obs2.shape)
+
+        obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS)
+        obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS)
+        print("obs1.shape:", obs1.shape)
+        print("obs2.shape:", obs2.shape)
+        return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
 
 configs = dict(
     batch_size=1024, #32
@@ -114,7 +135,7 @@ configs = dict(
     net_arch=[64, 64],
     features_extractor_class="CustomCNN",
     features_extractor_kwargs=dict(
-        features_dim=128),
+        features_dim=[64,32]),
 )
 
 bc_trainer = bc.BC(
