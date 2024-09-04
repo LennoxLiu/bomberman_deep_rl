@@ -52,22 +52,22 @@ turns = 100
 num_processes = 14
 
 if __name__ == '__main__':
-    simulate_trajectory(0, rounds=10)
+    # simulate_trajectory(0, rounds=10)
 ########################### Simulate trajectories ###########################
-    # start_time = time.time()
-    # with Pool(num_processes) as pool:
-    #     results = []
-    #     for i in range(turns):
-    #         result = pool.apply_async(simulate_trajectory, args=(i,))
-    #         results.append(result)
+    start_time = time.time()
+    with Pool(num_processes) as pool:
+        results = []
+        for i in range(turns):
+            result = pool.apply_async(simulate_trajectory, args=(i,))
+            results.append(result)
 
-    #     while len(results) > 0 and any([not result.ready() for result in results]):
-    #         completed = [result.ready() for result in results]
-    #         percent_complete = sum(completed) / turns * 100
-    #         if percent_complete > 0:
-    #             print(f"Progress: {percent_complete:.2f}% , Estimated time remaining: {((time.time() - start_time) / percent_complete) * (100 - percent_complete) /60 :.2f} mins")
+        while len(results) > 0 and any([not result.ready() for result in results]):
+            completed = [result.ready() for result in results]
+            percent_complete = sum(completed) / turns * 100
+            if percent_complete > 0:
+                print(f"Progress: {percent_complete:.2f}% , Estimated time remaining: {((time.time() - start_time) / percent_complete) * (100 - percent_complete) /60 :.2f} mins")
             
-    #         time.sleep(30)
+            time.sleep(30)
 
 ########################### Combine all trajectories ###########################
     # traj_list_combined = []

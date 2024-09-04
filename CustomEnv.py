@@ -39,7 +39,7 @@ def fromStateToObservation(game_state):
         explosion_field = game_state["explosion_map"].astype(np.uint8)
         # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
-            explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER # overlay bomb on explosion
+            explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER + 1 # overlay bomb on explosion
         
         # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 2 opponents
         for other in game_state["others"]:
@@ -57,6 +57,69 @@ def fromStateToObservation(game_state):
         assert spaces.MultiDiscrete(nvec=one_array * (max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4)), dtype = np.uint8).contains(observation)
 
         return observation
+
+def fromObservationToState(observation):
+    # Reconstruct the game state from the observation
+
+    # Size of each array part
+    field_size = s.COLS * s.ROWS
+    explosion_size = s.COLS * s.ROWS
+
+    # Split the observation into field and explosion_field
+    field_flat = observation[:field_size]
+    explosion_field_flat = observation[field_size:field_size + explosion_size]
+
+    # Reshape the flattened arrays back into (COLS, ROWS) shape
+    field = field_flat.reshape(s.COLS, s.ROWS)
+    explosion_field = explosion_field_flat.reshape(s.COLS, s.ROWS)
+
+    # Initialize game state components
+    game_state = {
+        'field': np.zeros((s.COLS, s.ROWS), dtype=np.int8),
+        'bombs': [],
+        'coins': [],
+        'self': None,
+        'others': [],
+        'explosion_map': np.zeros((s.COLS, s.ROWS), dtype=np.int8)
+    }
+
+    # Decode the field
+    for x in range(s.COLS):
+        for y in range(s.ROWS):
+            value = field[x, y]
+            if value == 0:
+                game_state['field'][x, y] = -1  # Stone walls
+            elif value == 1:
+                game_state['field'][x, y] = 0  # Free tile
+            elif value == 2:
+                game_state['field'][x, y] = 1  # Crates
+            elif value == 3:
+                game_state['coins'].append((x, y))  # Coins
+            elif value == 4:
+                game_state['others'].append(('rule_based_agent', 0, False, (x, y)))  # Opponent without bomb
+            elif value == 5:
+                game_state['others'].append(('rule_based_agent', 0, True, (x, y)))  # Opponent with bomb
+            elif value == 6:
+                game_state['self'] = ('user_agent', 0, False, (x, y))  # Self without bomb
+            elif value == 7:
+                game_state['self'] = ('user_agent', 0, True, (x, y))  # Self with bomb
+
+    # Decode the explosion_field (bombs, explosions)
+    for x in range(s.COLS):
+        for y in range(s.ROWS):
+            value = explosion_field[x, y]
+            if value > 0 and value <= s.EXPLOSION_TIMER:
+                game_state['explosion_map'][x, y] = value  # Explosion timer
+            elif value > s.EXPLOSION_TIMER and value <= s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER:
+                game_state['bombs'].append(((x, y), value - s.EXPLOSION_TIMER -1))  # Bomb with timer
+            elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 2:
+                # Already decoded as others
+                pass
+            elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 3:
+                # Already decoded as self
+                pass
+
+    return game_state
 
 
 class CustomEnv(gym.Env):

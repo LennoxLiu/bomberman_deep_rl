@@ -4,6 +4,7 @@ import string
 
 import numpy as np
 
+from CustomEnv import fromObservationToState
 import settings as s
 
 class RuleBasedAgent():
@@ -81,7 +82,7 @@ class RuleBasedAgent():
         self.current_round = 0
 
 
-    def act(self, game_state):
+    def act(self, observation):
         """
         Called each game step to determine the agent's next action.
 
@@ -89,10 +90,13 @@ class RuleBasedAgent():
         which is a dictionary. Consult 'get_state_for_agent' in environment.py to see
         what it contains.
         """
-        # Check if we are in a different round
-        if game_state["round"] != self.current_round:
-            self.reset()
-            self.current_round = game_state["round"]
+        game_state = fromObservationToState(observation)
+        # print("game_state in agent:", game_state)
+        # # Check if we are in a different round
+        # if game_state["round"] != self.current_round:
+        #     self.reset()
+        #     self.current_round = game_state["round"]
+
         # Gather information about the game state
         arena = game_state['field']
         _, score, bombs_left, (x, y) = game_state['self']

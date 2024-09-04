@@ -12,7 +12,7 @@ from imitation.util.util import make_vec_env
 from imitation.data.wrappers import RolloutInfoWrapper
 
 
-def test_against_RuleBasedAgent(turn_id, agent, rounds=10, verbose=False):
+def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = False, verbose=False):
     user_agent = agent
     env = gym.make('CustomEnv-v1')
     start_time = time.time()
@@ -20,45 +20,51 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, verbose=False):
     total_score = 0
     for i in range(rounds): # roundss trajectories per turn
         observation, game_state = env.reset() # seed = None will generate a random seed
-        # user_agent.reset()
+        if rule_based_agent:
+            user_agent.reset() # for RuleBasedAgent
 
         terminated = False
         truncated = False
+        temp_actions = []
         while not terminated and not truncated:
-            # action = user_agent.act(game_state)
-            # action = CustomEnv.ACTION_MAP.index(action)
-
-            action = user_agent.predict(observation, deterministic=True)[0]
-            if verbose:
-                print(f'Action: {action}')
-
+            if rule_based_agent:
+                action = user_agent.act(observation) # for RuleBasedAgent
+                action = CustomEnv.ACTION_MAP.index(action) # for imitation agent
+                temp_actions.append(action)
+            else:
+              action = user_agent.predict(observation, deterministic=True)[0] # for imitation agent
+            # if verbose:
+            #     print(f'Action: {action}')
+            
             observation, reward, terminated, truncated, game_state = env.step(action)
-
+            # print("game_state in test:", game_state)
         agent_win, other_scores, user_agent_score = env.close()
         
         total_score += user_agent_score
 
         if agent_win:
             win_count += 1
+            if verbose:
+                print(f'score: {user_agent_score}, others scores: {other_scores} ')
         
         if verbose:
-            print(f'Round {i} done. Time elapsed: {time.time() - start_time:.0f}s Win rate: {win_count / rounds:.2f}')
-            print(f'score: {user_agent_score}, others scores: {other_scores} ')
+            print(f'Round {i} done. Time elapsed: {time.time() - start_time:.0f}s Win rate: {win_count / rounds:.2f}, Score this round: {user_agent_score:.2f}')
+           # print("len(actions):",len(temp_actions))
 
     return win_count / rounds, total_score / rounds
 
 
 if __name__ == '__main__':
-    env = gym.make('CustomEnv-v1')
+    # env = gym.make('CustomEnv-v1')
 
-    agent=load_policy(
-        "ppo",
-        venv=env,
-        path="checkpoints/checkpoint00006/gen_policy/model"
-    )
+    # agent=load_policy(
+    #     "ppo",
+    #     venv=env,
+    #     path="checkpoints/checkpoint00006/gen_policy/model"
+    # )
 
-    print("Win rate:", test_against_RuleBasedAgent(0,agent,20,verbose=True))
-    exit(0)
+    # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(),1, rule_based_agent=True,verbose=True))
+    # exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
     turns = 10
     num_processes = 14
@@ -66,7 +72,7 @@ if __name__ == '__main__':
     with Pool(num_processes) as pool:
         results = []
         for i in range(turns):
-            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,agent))
+            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,RuleBasedAgent(),20,True,True))
             results.append(result)
 
         # while len(results) > 0 and any([not result.ready() for result in results]):
@@ -77,8 +83,7 @@ if __name__ == '__main__':
             
             # time.sleep(10)
         
-        win_rates = [result.get() for result in results]
+        results_list = [result.get() for result in results]
 
-    
-    print('Win rates:', np.mean(win_rates))
+    print('Win rates, score per round:', np.mean(results_list, axis=0))
 
