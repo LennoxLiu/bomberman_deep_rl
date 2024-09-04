@@ -4,10 +4,9 @@ import pickle
 import shutil
 import tempfile
 import time
-
+from typing import Callable
 import numpy as np
 from stable_baselines3.common.evaluation import evaluate_policy
-
 from imitation.algorithms import bc
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.policies.serialize import load_policy
@@ -17,9 +16,14 @@ from torch.cuda import is_available
 from imitation.util import logger as imit_logger
 from imitation.scripts.train_adversarial import save
 from imitation.data.wrappers import RolloutInfoWrapper
-
 from RuleBasedPolicy import RuleBasedPolicy
 from test_win_rate import test_against_RuleBasedAgent
+from tqdm import tqdm
+from stable_baselines3.common.policies import ActorCriticPolicy
+from stable_baselines3.common.torch_layers import BaseFeaturesExtractor
+import torch.nn as nn
+from gymnasium import spaces
+import torch as th
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -53,8 +57,77 @@ env = make_vec_env(
 
 expert = RuleBasedPolicy(env.observation_space, env.action_space)
 
+def linear_schedule(initial_value: float) -> Callable[[float], float]:
+    """
+    Linear learning rate schedule.
+
+    :param initial_value: Initial learning rate.
+    :return: schedule that computes
+      current learning rate depending on remaining progress
+    """
+    def func(progress_remaining: float) -> float:
+        """
+        Progress will decrease from 1 (beginning) to 0.
+
+        :param progress_remaining:
+        :return: current learning rate
+        """
+        return max(progress_remaining * initial_value, 1e-5)
+
+    return func
+
+class CustomCNN(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    :param features_dim: (int) Number of features extracted.
+        This corresponds to the number of unit for the last layer.
+    """
+
+    def __init__(self, observation_space: spaces.MultiDiscrete, features_dim: int = 256):
+        super().__init__(observation_space, features_dim)
+        # We assume CxHxW images (channels first)
+        # Re-ordering will be done by pre-preprocessing or wrapper
+        n_input_channels = observation_space.shape[0]
+        self.cnn = nn.Sequential(
+            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=4, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=0),
+            nn.ReLU(),
+            nn.Flatten(),
+        )
+
+        # Compute shape by doing one forward pass
+        with th.no_grad():
+            n_flatten = self.cnn(
+                th.as_tensor(observation_space.sample()[None]).float()
+            ).shape[1]
+
+        self.linear = nn.Sequential(nn.Linear(n_flatten, features_dim), nn.ReLU())
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        return self.linear(self.cnn(observations))
+
+configs = dict(
+    batch_size=1024, #32
+    minibatch_size=256,
+    learning_rate=0.0003,
+    net_arch=[64, 64],
+    features_extractor_class="CustomCNN",
+    features_extractor_kwargs=dict(
+        features_dim=128),
+)
+
 bc_trainer = bc.BC(
-    batch_size=256, #32
+    batch_size=configs['batch_size'],
+    minibatch_size=configs['minibatch_size'],
+    policy=ActorCriticPolicy(
+        env.observation_space,
+        env.action_space,
+        linear_schedule(configs["learning_rate"]),
+        net_arch=configs["net_arch"],
+        features_extractor_class=CustomCNN,
+        features_extractor_kwargs=configs["features_extractor_kwargs"],
+    ),
     observation_space=env.observation_space,
     action_space=env.action_space,
     rng=rng,
@@ -79,7 +152,7 @@ with tempfile.TemporaryDirectory(prefix="dagger_") as tmpdir:
     print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
     
     time_steps_per_round = 6600 # 6600 for 5 mins
-    for round_id in range(8):
+    for round_id in tqdm(range(8)):
         dagger_trainer.train(time_steps_per_round) # 6600 for 5 mins
         with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
             pickle.dump(dagger_trainer, file)
@@ -99,15 +172,16 @@ import matplotlib.pyplot as plt
 # Plot win rates and score per rounds
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
-ax1.plot(range(0,len(win_rates)*time_steps_per_round,time_steps_per_round), win_rates)
+ax1.plot(range(len(win_rates)), win_rates)
 ax1.set_xlabel('Round')
 ax1.set_ylabel('Win Rate')
 ax1.set_title('Win Rate per Round')
 
 ax2.plot(range(0,len(win_rates)*time_steps_per_round,time_steps_per_round), score_per_rounds)
-ax2.set_xlabel('Round')
+ax2.set_xlabel('time steps')
 ax2.set_ylabel('Score per Round')
-ax2.set_title('Score per Round')
+ax2.set_title('Score vs steps')
 
 plt.tight_layout()
+plt.savefig('/logs/dagger_train.png')
 plt.show()
