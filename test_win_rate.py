@@ -29,7 +29,9 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, verbose=False):
             # action = CustomEnv.ACTION_MAP.index(action)
 
             action = user_agent.predict(observation, deterministic=True)[0]
-            
+            if verbose:
+                print(f'Action: {action}')
+
             observation, reward, terminated, truncated, game_state = env.step(action)
 
         agent_win, other_scores, user_agent_score = env.close()
@@ -52,7 +54,7 @@ if __name__ == '__main__':
     agent=load_policy(
         "ppo",
         venv=env,
-        path="checkpoints/checkpoint00100/gen_policy/model.zip"
+        path="checkpoints/checkpoint00006/gen_policy/model"
     )
 
     print("Win rate:", test_against_RuleBasedAgent(0,agent,20,verbose=True))

@@ -22,16 +22,12 @@ import torch as th
 
 remove_logs_checkpoints = input("Do you want to remove existing 'logs' and 'checkpoints' folders? (y/n): ")
 if remove_logs_checkpoints.lower() == 'y':
+    # Remove existing 'logs' and 'checkpoints' folders
     if os.path.exists('logs'):
         shutil.rmtree('logs')
     if os.path.exists('checkpoints'):
         shutil.rmtree('checkpoints')
 
-# Remove existing 'logs' and 'checkpoints' folders
-if os.path.exists('logs'):
-    shutil.rmtree('logs')
-if os.path.exists('checkpoints'):
-    shutil.rmtree('checkpoints')
 
 SEED = 42
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -99,20 +95,29 @@ configs = {'learner': {
 } }
 
 os.makedirs('logs/learner', exist_ok=True)
-learner = PPO(
-    env=env,
-    policy=MlpPolicy,
-    batch_size=configs['learner']['batch_size'],
-    ent_coef=configs['learner']['ent_coef'],
-    learning_rate=configs['learner']['learning_rate'],
-    gamma=configs['learner']['gamma'],
-    n_epochs=configs['learner']['n_epochs'],
-    seed=SEED,
-    tensorboard_log='./logs/learner/',
-    policy_kwargs= dict(activation_fn=th.nn.ReLU, net_arch=dict(\
-        pi=configs['learner']['policy_kwargs']['pi'], \
-        vf=configs['learner']['policy_kwargs']['vf'])),
+if remove_logs_checkpoints.lower() == 'y':
+    use_checkpoint = input("Train from previous checkpoint? (y/n): ")
+if use_checkpoint.lower() == 'y':
+    learner = load_policy(
+        "ppo",
+        venv=env,
+        path="checkpoints/checkpoint00005/gen_policy/model"
     )
+else:
+    learner = PPO(
+        env=env,
+        policy=MlpPolicy,
+        batch_size=configs['learner']['batch_size'],
+        ent_coef=configs['learner']['ent_coef'],
+        learning_rate=configs['learner']['learning_rate'],
+        gamma=configs['learner']['gamma'],
+        n_epochs=configs['learner']['n_epochs'],
+        seed=SEED,
+        tensorboard_log='./logs/learner/',
+        policy_kwargs= dict(activation_fn=th.nn.ReLU, net_arch=dict(\
+            pi=configs['learner']['policy_kwargs']['pi'], \
+            vf=configs['learner']['policy_kwargs']['vf'])),
+        )
 
 reward_net = BasicRewardNet(
     observation_space=env.observation_space,
@@ -142,7 +147,7 @@ learner_rewards_before_training, _ = evaluate_policy(
     learner, env, 100, return_episode_rewards=True,
 )
 # train the learner and evaluate again
-gail_trainer.train(20000*5, callback)  # Train for 800_000 steps to match expert.
+gail_trainer.train(20000*6, callback)  # Train for 800_000 steps to match expert.
 
 env.seed(SEED)
 learner_rewards_after_training, _ = evaluate_policy(

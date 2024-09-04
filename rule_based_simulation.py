@@ -1,3 +1,4 @@
+# generate data(rollout) from rule based agent for GAIL training
 import time
 import numpy as np
 from RuleBasedAgent import RuleBasedAgent
