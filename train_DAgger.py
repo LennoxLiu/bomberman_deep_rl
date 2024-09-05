@@ -97,7 +97,7 @@ class CustomBetaSchedule(BetaSchedule):
         self.beta = 1
 
     def  __call__(self, round_num: int) -> float:
-        self.beta -= 0.002
+        self.beta -= 0.01 # 0.0001 too small, 0.01 too large
         self.beta = max(self.beta, self.beta_final)
 
         self.logger.record("dagger/beta", self.beta)
@@ -241,7 +241,7 @@ while True:
                         ) # 6600 for 5 mins
     if round_id % 2 == 0:
 
-        dagger_trainer.save_trainer()
+        # dagger_trainer.save_trainer()
         #  The created snapshot can be reloaded with `reconstruct_trainer()`.
 
         # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
