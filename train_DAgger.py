@@ -94,8 +94,6 @@ class CustomBetaSchedule(BetaSchedule):
         self.logger = logger
 
         self.beta = 1
-        self.logger.record("dagger/beta", 1)
-        self.logger.dump(step=0)
 
     def  __call__(self, round_num: int) -> float:
         self.beta -= 0.001
@@ -174,7 +172,7 @@ configs = {
     },
     "dagger_trainer": {
         "rollout_round_min_episodes": 3, # The number of episodes the must be completed completed before a dataset aggregation step ends.
-        "rollout_round_min_timesteps": 10240, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
+        "rollout_round_min_timesteps": 1024, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
         "bc_train_kwargs": {
             "n_epochs": 8,
         },
