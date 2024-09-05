@@ -239,18 +239,14 @@ while True:
                             bc_train_kwargs=configs["dagger_trainer"]["bc_train_kwargs"],
                         ) # 6600 for 5 mins
     if round_id % 2 == 0:
-        
-        # Exclude the lock object from pickling
-        dagger_trainer_copy = copy.deepcopy(dagger_trainer)
-        dagger_trainer_copy._lock = None
 
-        dagger_trainer_copy.save_trainer()
+        dagger_trainer.save_trainer()
         #  The created snapshot can be reloaded with `reconstruct_trainer()`.
 
         # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
         #     pickle.dump(dagger_trainer_copy, file)
-        # with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
-        #     pickle.dump(dagger_trainer_copy.policy, file)
+        with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
+            pickle.dump(dagger_trainer.policy, file)
 
     win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=50, verbose=False)
     print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
