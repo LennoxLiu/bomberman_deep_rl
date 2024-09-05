@@ -27,6 +27,7 @@ from gymnasium import spaces
 import torch as th
 import settings as s
 from torch.utils.tensorboard import SummaryWriter
+from imitation.algorithms.dagger import BetaSchedule
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -85,6 +86,25 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
     return func
 
+
+# beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
+class CustomBetaSchedule(BetaSchedule):
+    def __init__(self, logger: imit_logger, beta_final: float = 0.01):
+        self.beta_final = beta_final
+        self.logger = logger
+
+        self.beta = 1
+        self.logger.record("dagger/beta", 1)
+        self.logger.dump(step=0)
+
+    def  __call__(self, round_num: int) -> float:
+        self.beta -= 0.001
+        self.logger.record("dagger/beta", self.beta)
+        self.logger.dump(step=round_num)
+
+        return self.beta
+
+
 class CustomCNN(BaseFeaturesExtractor):
     """
     :param observation_space: (gym.Space)
@@ -101,14 +121,12 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
             nn.Flatten(),
         )
         self.cnn2 = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
@@ -145,20 +163,20 @@ configs = {
     "bc_trainer": {
         "batch_size": 256, # The number of samples in each batch of expert data.
         "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
-        "l2_weight": 1e-7, # default: 0
+        "l2_weight": 0, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
             "net_arch": [64, 32],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
-                "features_dim": [64, 32]
+                "features_dim": [64, 16]
         }}
     },
     "dagger_trainer": {
         "rollout_round_min_episodes": 3, # The number of episodes the must be completed completed before a dataset aggregation step ends.
-        "rollout_round_min_timesteps": 1024, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
+        "rollout_round_min_timesteps": 10240, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
         "bc_train_kwargs": {
-            "n_epochs": 8,
+            "n_epochs": 4,
         },
     }
 }
@@ -198,6 +216,7 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
+    beta_schedule=CustomBetaSchedule(custom_logger),
 )
 
 ############# Start training #############
