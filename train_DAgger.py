@@ -28,6 +28,7 @@ import torch as th
 import settings as s
 from torch.utils.tensorboard import SummaryWriter
 from imitation.algorithms.dagger import BetaSchedule
+import copy
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -89,7 +90,7 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 # beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
 class CustomBetaSchedule(BetaSchedule):
-    def __init__(self, logger: imit_logger, beta_final: float = 0.01):
+    def __init__(self, logger, beta_final: float = 0.05):
         self.beta_final = beta_final
         self.logger = logger
 
@@ -97,9 +98,11 @@ class CustomBetaSchedule(BetaSchedule):
 
     def  __call__(self, round_num: int) -> float:
         self.beta -= 0.001
-        self.logger.record("dagger/beta", self.beta)
-        self.logger.dump(step=round_num)
+        self.beta = max(self.beta, self.beta_final)
 
+        # self.logger.record("dagger/beta", self.beta)
+        # self.logger.dump(step=round_num)
+        self.logger.add_scalar("dagger/beta", self.beta, round_num)
         return self.beta
 
 
@@ -172,9 +175,9 @@ configs = {
     },
     "dagger_trainer": {
         "rollout_round_min_episodes": 3, # The number of episodes the must be completed completed before a dataset aggregation step ends.
-        "rollout_round_min_timesteps": 1024, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
+        "rollout_round_min_timesteps": 10240, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
         "bc_train_kwargs": {
-            "n_epochs": 8,
+            "n_epochs": 8, # default: 4
         },
     }
 }
@@ -214,7 +217,7 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=CustomBetaSchedule(custom_logger),
+    beta_schedule=CustomBetaSchedule(SummaryWriter(log_dir='logs/tensorboard_logs/beta')),
 )
 
 ############# Start training #############
@@ -236,11 +239,19 @@ while True:
                             bc_train_kwargs=configs["dagger_trainer"]["bc_train_kwargs"],
                         ) # 6600 for 5 mins
     if round_id % 2 == 0:
-        dagger_trainer.save_trainer()
+        
+        # Exclude the lock object from pickling
+        dagger_trainer_copy = copy.deepcopy(dagger_trainer)
+        dagger_trainer_copy._lock = None
+
+        dagger_trainer_copy.save_trainer()
         #  The created snapshot can be reloaded with `reconstruct_trainer()`.
 
         # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
-        #     pickle.dump(dagger_trainer, file)
+        #     pickle.dump(dagger_trainer_copy, file)
+        # with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
+        #     pickle.dump(dagger_trainer_copy.policy, file)
+
     win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=50, verbose=False)
     print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
