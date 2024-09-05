@@ -26,6 +26,7 @@ import torch.nn as nn
 from gymnasium import spaces
 import torch as th
 import settings as s
+from torch.utils.tensorboard import SummaryWriter
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -39,10 +40,15 @@ if remove_logs_checkpoints.lower() == 'y':
         shutil.rmtree('checkpoints')
 
 
+# Create a SummaryWriter for logging to TensorBoard
+os.makedirs('logs/tensorboard_logs', exist_ok=True)
+# Configure the custom logger to use the SummaryWriter
+# custom_logger = SummaryWriter(log_dir='logs/tensorboard_logs')
 custom_logger = imit_logger.configure(
-        folder='logs',
+        folder='logs/tensorboard_logs',
         format_strs=["tensorboard"],
     )
+
 os.makedirs('checkpoints', exist_ok=True)
 def callback(round_num: int, /) -> None:
     # if checkpoint_interval > 0 and  round_num % checkpoint_interval == 0:
@@ -150,7 +156,7 @@ configs = {
         "rollout_round_min_episodes": 3, # The number of episodes the must be completed completed before a dataset aggregation step ends.
         "rollout_round_min_timesteps": 1024, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
         "bc_train_kwargs": {
-            "n_epochs": 4,
+            "n_epochs": 8,
         },
     }
 }
@@ -181,27 +187,17 @@ bc_trainer = bc.BC(
 start_time = time.time()
 win_rates = []
 score_per_rounds = []
-os.makedirs('checkpoints/dagger_trainer', exist_ok=True)
+os.makedirs('checkpoints', exist_ok=True)
 dagger_trainer = SimpleDAggerTrainer(
     venv=env,
-    scratch_dir='checkpoints/dagger_trainer/',
+    scratch_dir='checkpoints',
     expert_policy=expert,
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
 )
 
-import logging
-# # Suppress logs containing the specific message
-logging.basicConfig(level=logging.CRITICAL)
-logger = logging.getLogger()
-class SuppressSpecificLogs(logging.Filter):
-    def filter(self, record):
-        # Suppress logs containing the specific message
-        return "Saving the dataset" not in record.getMessage()
-# Add the filter to the logger
-logger.addFilter(SuppressSpecificLogs())
-
+############# Start training #############
 rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
 print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
 
@@ -223,6 +219,9 @@ for round_id in tqdm(range(30)):
     print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
     score_per_rounds.append(score_per_round)
+    custom_logger.record("a/win_rate", win_rate)
+    custom_logger.record("a/score_per_round", score_per_round)
+    custom_logger.dump(step=round_id)
 
 rew_after_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
 print(f"Mean reward before training: {np.mean(rew_before_training):.2f}, after training: {np.mean(rew_after_training):.2f}")
@@ -230,6 +229,7 @@ learner_eval_after = test_against_RuleBasedAgent(0, dagger_trainer.policy, round
 print(f"Win rate after training: {learner_eval_after[0]:.2f}, score per round after training: {learner_eval_after[1]:.2f}")
 print(f"Total time elapsed: {(time.time() - start_time)/60:.2f} min")
 
+############# Finish training #############
 import matplotlib.pyplot as plt
 
 # Plot win rates and score per rounds
