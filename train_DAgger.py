@@ -98,8 +98,9 @@ class CustomBetaSchedule(BetaSchedule):
         self.beta = 1
 
     def  __call__(self, round_num: int) -> float:
-        self.beta -= self.delta_beta # 0.0001 too small, 0.01 too large
-        self.beta = max(self.beta, self.beta_final)
+        if round_num % 5 == 0:
+            self.beta -= self.delta_beta # 0.0001 too small, 0.01 too large
+            self.beta = max(self.beta, self.beta_final)
 
         self.logger.record("dagger/beta", self.beta)
         self.logger.dump(step=round_num)
@@ -114,24 +115,26 @@ class CustomCNN(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: spaces.Box, network_configs= {"cnn1":[64,64], "cnn2":[16,16], "features_dim": [128, 64]}):
+    def __init__(self, observation_space: spaces.Box, network_configs: dict):
         super().__init__(observation_space, features_dim=sum(network_configs['features_dim']))
         # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
         n_input_channels = 1
 
         cnn1_config = network_configs['cnn1']
+        cnn1_strides = network_configs['cnn1_strides']
         self.cnn1 = nn.Sequential()
-        self.cnn1.add_module('conv0', nn.Conv2d(n_input_channels, cnn1_config[0], kernel_size=3, stride=1, padding=0))
+        self.cnn1.add_module('conv0', nn.Conv2d(n_input_channels, cnn1_config[0], kernel_size=3, stride=cnn1_strides[0], padding=1))
         for i in range(1, len(cnn1_config)):
-            self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=1, padding=0))
+            self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=cnn1_strides[i], padding=1))
             self.cnn1.add_module('relu', nn.ReLU())
         self.cnn1.add_module('flatten', nn.Flatten())
 
         cnn2_config = network_configs['cnn2']
+        cnn2_strides = network_configs['cnn2_strides']
         self.cnn2 = nn.Sequential()
-        self.cnn2.add_module('conv0', nn.Conv2d(n_input_channels, cnn2_config[0], kernel_size=3, stride=1, padding=0))
+        self.cnn2.add_module('conv0', nn.Conv2d(n_input_channels, cnn2_config[0], kernel_size=3, stride=cnn2_strides[0], padding=1))
         for i in range(1, len(cnn2_config)):
-            self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=1, padding=0))
+            self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=cnn2_strides[i], padding=1))
             self.cnn2.add_module('relu', nn.ReLU())
         self.cnn2.add_module('flatten', nn.Flatten())
 
@@ -170,10 +173,10 @@ configs = {
         "l2_weight": 0, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": [256, 256, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
+            "net_arch": [256, 256, 128, 128, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1":[256,256,256], "cnn2":[64,64], "features_dim": [256, 64]}
+                "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "features_dim": [256, 128]}
         }}
     },
     "dagger_trainer": {
@@ -182,7 +185,7 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "delta_beta": 0.0025, # The amount that beta decreases by each round.
+        "delta_beta": 0.01, # The amount that beta decreases by each round.
         "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
     }
 }
