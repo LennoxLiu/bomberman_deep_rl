@@ -90,16 +90,18 @@ class CustomCNN(BaseFeaturesExtractor):
         # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
         n_input_channels = 1
         self.cnn1 = nn.Sequential(
-            nn.Conv2d(n_input_channels, 64, kernel_size=4, stride=1, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=2, stride=1, padding=0),
+            nn.Conv2d(32, 64, kernel_size=4, stride=1, padding=0),
+            nn.ReLU(),
+            nn.Conv2d(64, 128, kernel_size=2, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
         self.cnn2 = nn.Sequential(
-            nn.Conv2d(n_input_channels, 32, kernel_size=4, stride=1, padding=0),
+            nn.Conv2d(n_input_channels, 32, kernel_size=8, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 32, kernel_size=2, stride=1, padding=0),
+            nn.Conv2d(32, 64, kernel_size=4, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
@@ -131,13 +133,13 @@ class CustomCNN(BaseFeaturesExtractor):
         return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
 
 configs = dict(
-    batch_size=1024, #32
+    batch_size=256, #32
     minibatch_size=256,
     learning_rate=0.0003,
-    net_arch=[64, 64],
+    net_arch=[128, 64, 32],
     features_extractor_class="CustomCNN",
     features_extractor_kwargs=dict(
-        features_dim=[64,32]),
+        features_dim=[128,64]),
 )
 
 bc_trainer = bc.BC(
@@ -174,8 +176,8 @@ with tempfile.TemporaryDirectory(prefix="dagger_") as tmpdir:
     rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
     print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
     
-    time_steps_per_round = 6600 # 6600 for 5 mins
-    for round_id in tqdm(range(8)):
+    time_steps_per_round = 30000 # 30000 for 5 mins
+    for round_id in tqdm(range()):
         dagger_trainer.train(time_steps_per_round) # 6600 for 5 mins
         with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
             pickle.dump(dagger_trainer, file)
@@ -206,5 +208,6 @@ ax2.set_ylabel('Score per Round')
 ax2.set_title('Score vs steps')
 
 plt.tight_layout()
-plt.savefig('/logs/dagger_train.png')
 plt.show()
+plt.savefig('logs/dagger_train.png')
+

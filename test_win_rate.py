@@ -69,7 +69,7 @@ if __name__ == '__main__':
     #     path="checkpoints/checkpoint00006/gen_policy/model"
     # )
 
-    print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),10, rule_based_agent=True,verbose=True))
+    print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),20, rule_based_agent=True,verbose=True))
     exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
     turns = 10

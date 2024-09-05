@@ -160,7 +160,7 @@ class CustomEnv(gym.Env):
                 self.my_agent = a
         assert isinstance(self.my_agent, agents.Agent)
 
-        self.rng = np.random.default_rng(42)
+        self.rng = np.random.default_rng()
         # start a new round
         self.world.new_round()
 
@@ -172,6 +172,8 @@ class CustomEnv(gym.Env):
         return distance
 
     def step(self, action):
+        terminated = False
+        truncated = False
         # terminated or trunctated
         if self.world.running == False:
             terminated = True
@@ -179,15 +181,12 @@ class CustomEnv(gym.Env):
                 truncated = True
             else:
                 truncated = False
-            return np.zeros((2,s.ROWS, s.COLS),dtype=np.uint8), 0, terminated, truncated, {}
+            # return np.zeros((2,s.ROWS, s.COLS),dtype=np.uint8), 0, terminated, truncated, {}
             # game_state = self.world.get_state_for_agent(self.my_agent)
+        else:
+            self.world.do_step(ACTION_MAP[action])
+            self.user_input = None
         
-        self.world.do_step(ACTION_MAP[action])
-        self.user_input = None
-
-        terminated = False
-        truncated = False
-
         # get observation
         death_reward = 0
         game_state = self.world.get_state_for_agent(self.my_agent)
@@ -252,7 +251,7 @@ class CustomEnv(gym.Env):
             elif event == e.BOMB_EXPLODED:
                 reward += 0
             elif event == e.CRATE_DESTROYED:
-                reward += 0.1
+                reward += 0.05
             elif event == e.COIN_FOUND:
                 reward += 0.05
             elif event == e.COIN_COLLECTED:
@@ -260,7 +259,7 @@ class CustomEnv(gym.Env):
             elif event == e.KILLED_OPPONENT:
                 reward += 1.0
             elif event == e.KILLED_SELF:
-                reward -= 0.5
+                reward -= 0.25
             elif event == e.GOT_KILLED:
                 reward -= 0.5
             elif event == e.OPPONENT_ELIMINATED:
