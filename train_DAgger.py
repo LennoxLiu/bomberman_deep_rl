@@ -132,9 +132,11 @@ class CustomCNN(BaseFeaturesExtractor):
         obs1, obs2 = observations[:,0], observations[:, 1]
         # print("obs1.shape:", obs1.shape)
         # print("obs2.shape:", obs2.shape)
-
-        obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS)
-        obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS)
+        
+        # Reshape and standardize the input to [0,1]
+        obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS) / 8
+        obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+        
         # print("obs1.shape:", obs1.shape)
         # print("obs2.shape:", obs2.shape)
         return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
