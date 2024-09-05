@@ -170,7 +170,7 @@ configs = {
         "l2_weight": 0, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": [256, 128, 64, 64, 64, 64, 32, 32],
+            "net_arch": [256, 256, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1":[256,256,256], "cnn2":[64,64], "features_dim": [256, 64]}
@@ -182,7 +182,7 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "delta_beta": 0.005, # The amount that beta decreases by each round.
+        "delta_beta": 0.0025, # The amount that beta decreases by each round.
         "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
     }
 }
