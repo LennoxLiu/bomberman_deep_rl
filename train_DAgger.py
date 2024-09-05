@@ -38,9 +38,10 @@ if remove_logs_checkpoints.lower() == 'y':
     if os.path.exists('checkpoints'):
         shutil.rmtree('checkpoints')
 
+
 custom_logger = imit_logger.configure(
         folder='logs',
-        format_strs=["tensorboard","stdout"],
+        format_strs=["tensorboard"],
     )
 os.makedirs('checkpoints', exist_ok=True)
 def callback(round_num: int, /) -> None:
@@ -132,26 +133,43 @@ class CustomCNN(BaseFeaturesExtractor):
         # print("obs2.shape:", obs2.shape)
         return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
 
-configs = dict(
-    batch_size=256, #32
-    minibatch_size=256,
-    learning_rate=0.0003,
-    net_arch=[128, 64, 32],
-    features_extractor_class="CustomCNN",
-    features_extractor_kwargs=dict(
-        features_dim=[128,64]),
-)
+configs = {
+    "bc_trainer": {
+        "batch_size": 256, # The number of samples in each batch of expert data.
+        "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
 
+        "policy":{
+            "learning_rate": 0.0003,
+            "net_arch": [128, 64, 32],
+            "features_extractor_class": "CustomCNN",
+            "features_extractor_kwargs": {
+                "features_dim": [128, 64]
+        }}
+    },
+    "dagger_trainer": {
+        "rollout_round_min_episodes": 3, # The number of episodes the must be completed completed before a dataset aggregation step ends.
+        "rollout_round_min_timesteps": 1024, #The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
+        "bc_train_kwargs": {
+            "n_epochs": 4,
+        },
+    }
+}
+
+time_steps_per_round = configs["dagger_trainer"]["rollout_round_min_timesteps"]*configs["dagger_trainer"]['bc_train_kwargs']['n_epochs']
+
+# The agent is trained in “rounds” where each round consists of a dataset aggregation step followed by BC update step.
+# During a dataset aggregation step, self.expert_policy is used to perform rollouts in the environment but there is a 1 - beta chance (beta is determined from the round number and self.beta_schedule) that the DAgger agent’s action is used instead. Regardless of whether the DAgger agent’s action is used during the rollout, the expert action and corresponding observation are always appended to the dataset. The number of environment steps in the dataset aggregation stage is determined by the rollout_round_min* arguments.
+# During a BC update step, BC.train() is called to update the DAgger agent on all data collected so far.
 bc_trainer = bc.BC(
-    batch_size=configs['batch_size'],
-    minibatch_size=configs['minibatch_size'],
+    batch_size=configs['bc_trainer']['batch_size'],
+    minibatch_size=configs['bc_trainer']['minibatch_size'],
     policy=ActorCriticPolicy(
         env.observation_space,
         env.action_space,
-        linear_schedule(configs["learning_rate"]),
-        net_arch=configs["net_arch"],
+        linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
+        net_arch=configs['bc_trainer']['policy']["net_arch"],
         features_extractor_class=CustomCNN,
-        features_extractor_kwargs=configs["features_extractor_kwargs"],
+        features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
     observation_space=env.observation_space,
     action_space=env.action_space,
@@ -163,32 +181,52 @@ bc_trainer = bc.BC(
 start_time = time.time()
 win_rates = []
 score_per_rounds = []
-with tempfile.TemporaryDirectory(prefix="dagger_") as tmpdir:
-    print(tmpdir)
-    dagger_trainer = SimpleDAggerTrainer(
-        venv=env,
-        scratch_dir=tmpdir,
-        expert_policy=expert,
-        bc_trainer=bc_trainer,
-        rng=rng,
-    )
+os.makedirs('checkpoints/dagger_trainer', exist_ok=True)
+dagger_trainer = SimpleDAggerTrainer(
+    venv=env,
+    scratch_dir='checkpoints/dagger_trainer/',
+    expert_policy=expert,
+    bc_trainer=bc_trainer,
+    rng=rng,
+    custom_logger=custom_logger,
+)
 
-    rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
-    print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
-    
-    time_steps_per_round = 30000 # 30000 for 5 mins
-    for round_id in tqdm(range()):
-        dagger_trainer.train(time_steps_per_round) # 6600 for 5 mins
-        with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
-            pickle.dump(dagger_trainer, file)
-        win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=10, verbose=False)
-        print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
-        win_rates.append(win_rate)
-        score_per_rounds.append(score_per_round)
+import logging
+# # Suppress logs containing the specific message
+logging.basicConfig(level=logging.CRITICAL)
+logger = logging.getLogger()
+class SuppressSpecificLogs(logging.Filter):
+    def filter(self, record):
+        # Suppress logs containing the specific message
+        return "Saving the dataset" not in record.getMessage()
+# Add the filter to the logger
+logger.addFilter(SuppressSpecificLogs())
+
+rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
+print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
+
+# total_timesteps (int) – The number of timesteps to train inside the environment. 
+# In practice this is a lower bound, because the number of timesteps is rounded up to finish the minimum number of episodes or timesteps in the last DAgger training round, and the environment timesteps are executed in multiples of self.venv.num_envs.
+for round_id in tqdm(range(30)):
+    dagger_trainer.train(total_timesteps = time_steps_per_round,
+                            rollout_round_min_episodes=configs["dagger_trainer"]["rollout_round_min_episodes"],
+                            rollout_round_min_timesteps=configs["dagger_trainer"]["rollout_round_min_timesteps"],
+                            bc_train_kwargs=configs["dagger_trainer"]["bc_train_kwargs"],
+                        ) # 6600 for 5 mins
+    if round_id % 5 == 0:
+        dagger_trainer.save_trainer()
+        #  The created snapshot can be reloaded with `reconstruct_trainer()`.
+
+        # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
+        #     pickle.dump(dagger_trainer, file)
+    win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=20, verbose=False)
+    print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
+    win_rates.append(win_rate)
+    score_per_rounds.append(score_per_round)
 
 rew_after_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
 print(f"Mean reward before training: {np.mean(rew_before_training):.2f}, after training: {np.mean(rew_after_training):.2f}")
-learner_eval_after = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=20, verbose=True)
+learner_eval_after = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=50, verbose=True)
 print(f"Win rate after training: {learner_eval_after[0]:.2f}, score per round after training: {learner_eval_after[1]:.2f}")
 print(f"Total time elapsed: {(time.time() - start_time)/60:.2f} min")
 
@@ -198,14 +236,14 @@ import matplotlib.pyplot as plt
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
 
 ax1.plot(range(len(win_rates)), win_rates)
-ax1.set_xlabel('Round')
-ax1.set_ylabel('Win Rate')
-ax1.set_title('Win Rate per Round')
+ax1.set_xlabel('training rounds')
+ax1.set_ylabel('Win Rate per round')
+ax1.set_title('Win Rate vs training rounds')
 
 ax2.plot(range(0,len(win_rates)*time_steps_per_round,time_steps_per_round), score_per_rounds)
 ax2.set_xlabel('time steps')
 ax2.set_ylabel('Score per Round')
-ax2.set_title('Score vs steps')
+ax2.set_title('Score vs time steps')
 
 plt.tight_layout()
 plt.show()
