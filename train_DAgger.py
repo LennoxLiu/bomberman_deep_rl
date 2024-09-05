@@ -170,10 +170,10 @@ configs = {
         "l2_weight": 0, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": [64, 32],
+            "net_arch": [128, 64],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1":[64,64], "cnn2":[16,16], "features_dim": [64, 16]}
+                "network_configs": {"cnn1":[128,128,128], "cnn2":[32,32], "features_dim": [128, 32]}
         }}
     },
     "dagger_trainer": {
