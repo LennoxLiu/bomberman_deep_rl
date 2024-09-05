@@ -136,7 +136,7 @@ class CustomCNN(BaseFeaturesExtractor):
         # Reshape and standardize the input to [0,1]
         obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS) / 8
         obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
-        
+
         # print("obs1.shape:", obs1.shape)
         # print("obs2.shape:", obs2.shape)
         return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
@@ -206,7 +206,11 @@ print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
 # total_timesteps (int) – The number of timesteps to train inside the environment. 
 # In practice this is a lower bound, because the number of timesteps is rounded up to finish the minimum number of episodes or timesteps in the last DAgger training round, and the environment timesteps are executed in multiples of self.venv.num_envs.
 # for round_id in tqdm(range(30)):
-round_id=0
+
+round_id=1
+custom_logger.record("a/win_rate", 0)
+custom_logger.record("a/score_per_round", 0)
+custom_logger.dump(step=0)
 while True:
     dagger_trainer.train(total_timesteps = time_steps_per_round,
                             rollout_round_min_episodes=configs["dagger_trainer"]["rollout_round_min_episodes"],
