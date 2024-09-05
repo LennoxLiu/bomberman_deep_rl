@@ -203,7 +203,9 @@ print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
 
 # total_timesteps (int) – The number of timesteps to train inside the environment. 
 # In practice this is a lower bound, because the number of timesteps is rounded up to finish the minimum number of episodes or timesteps in the last DAgger training round, and the environment timesteps are executed in multiples of self.venv.num_envs.
-for round_id in tqdm(range(30)):
+# for round_id in tqdm(range(30)):
+round_id=0
+while True:
     dagger_trainer.train(total_timesteps = time_steps_per_round,
                             rollout_round_min_episodes=configs["dagger_trainer"]["rollout_round_min_episodes"],
                             rollout_round_min_timesteps=configs["dagger_trainer"]["rollout_round_min_timesteps"],
@@ -222,6 +224,8 @@ for round_id in tqdm(range(30)):
     custom_logger.record("a/win_rate", win_rate)
     custom_logger.record("a/score_per_round", score_per_round)
     custom_logger.dump(step=round_id)
+
+    round_id += 1
 
 rew_after_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
 print(f"Mean reward before training: {np.mean(rew_before_training):.2f}, after training: {np.mean(rew_after_training):.2f}")
