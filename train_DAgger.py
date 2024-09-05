@@ -28,7 +28,7 @@ import torch as th
 import settings as s
 from torch.utils.tensorboard import SummaryWriter
 from imitation.algorithms.dagger import BetaSchedule
-import copy
+from imitation.util import util
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -228,6 +228,26 @@ dagger_trainer = SimpleDAggerTrainer(
     custom_logger=custom_logger,
     beta_schedule=CustomBetaSchedule(custom_logger, delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
+def save_DAgger_trainer(trainer,configs):
+    trainer.scratch_dir.mkdir(parents=True, exist_ok=True)
+
+    trainer_dict = {
+        'policy': trainer.policy,
+        'bc_trainer': trainer.bc_trainer,
+        'current_beta': trainer.beta_schedule.beta,
+        'configs': configs,  # Add any important hyperparameters
+        # Exclude non-pickleable items like logger, rng, and env
+    }
+
+    # save full trainer checkpoints
+    checkpoint_paths = [
+        trainer.scratch_dir / f"checkpoint-{trainer.round_num:03d}.pt",
+        trainer.scratch_dir / "checkpoint-latest.pt",
+    ]
+    for checkpoint_path in checkpoint_paths:
+        th.save(trainer_dict, checkpoint_path)
+
+
 
 ############# Start training #############
 rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
@@ -249,8 +269,9 @@ while True:
                         ) # 6600 for 5 mins
 
     try:
-        dagger_trainer.save_trainer()
+        # dagger_trainer.save_trainer()
         #  The created snapshot can be reloaded with `reconstruct_trainer()`.
+        save_DAgger_trainer(dagger_trainer,configs)
     except Exception as e:
         print("Error saving trainer:", e)
         continue
