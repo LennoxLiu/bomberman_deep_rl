@@ -90,14 +90,15 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 # beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
 class CustomBetaSchedule(BetaSchedule):
-    def __init__(self, logger, beta_final: float = 0.05):
+    def __init__(self, logger, delta_beta = 0.005 ,beta_final: float = 0.05):
         self.beta_final = beta_final
         self.logger = logger
+        self.delta_beta = delta_beta
 
         self.beta = 1
 
     def  __call__(self, round_num: int) -> float:
-        self.beta -= 0.01 # 0.0001 too small, 0.01 too large
+        self.beta -= self.delta_beta # 0.0001 too small, 0.01 too large
         self.beta = max(self.beta, self.beta_final)
 
         self.logger.record("dagger/beta", self.beta)
@@ -113,24 +114,26 @@ class CustomCNN(BaseFeaturesExtractor):
         This corresponds to the number of unit for the last layer.
     """
 
-    def __init__(self, observation_space: spaces.Box, features_dim = [128, 64]):
-        super().__init__(observation_space, features_dim=sum(features_dim))
+    def __init__(self, observation_space: spaces.Box, network_configs= {"cnn1":[64,64], "cnn2":[16,16], "features_dim": [128, 64]}):
+        super().__init__(observation_space, features_dim=sum(network_configs['features_dim']))
         # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
         n_input_channels = 1
-        self.cnn1 = nn.Sequential(
-            nn.Conv2d(n_input_channels, 64, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
-        self.cnn2 = nn.Sequential(
-            nn.Conv2d(n_input_channels, 16, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=0),
-            nn.ReLU(),
-            nn.Flatten(),
-        )
+
+        cnn1_config = network_configs['cnn1']
+        self.cnn1 = nn.Sequential()
+        self.cnn1.add_module('conv0', nn.Conv2d(n_input_channels, cnn1_config[0], kernel_size=3, stride=1, padding=0))
+        for i in range(1, len(cnn1_config)):
+            self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=1, padding=0))
+            self.cnn1.add_module('relu', nn.ReLU())
+        self.cnn1.add_module('flatten', nn.Flatten())
+
+        cnn2_config = network_configs['cnn2']
+        self.cnn2 = nn.Sequential()
+        self.cnn2.add_module('conv0', nn.Conv2d(n_input_channels, cnn2_config[0], kernel_size=3, stride=1, padding=0))
+        for i in range(1, len(cnn2_config)):
+            self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=1, padding=0))
+            self.cnn2.add_module('relu', nn.ReLU())
+        self.cnn2.add_module('flatten', nn.Flatten())
 
         # Compute shape by doing one forward pass
         with th.no_grad():
@@ -143,8 +146,8 @@ class CustomCNN(BaseFeaturesExtractor):
                 th.as_tensor(observation_space.sample()[1].reshape(-1, 1, s.ROWS, s.COLS)).float()
             ).shape[1]
 
-        self.linear1 = nn.Sequential(nn.Linear(n_flatten1, features_dim[0]), nn.ReLU())
-        self.linear2 = nn.Sequential(nn.Linear(n_flatten2, features_dim[1]), nn.ReLU())
+        self.linear1 = nn.Sequential(nn.Linear(n_flatten1, network_configs["features_dim"][0]), nn.ReLU())
+        self.linear2 = nn.Sequential(nn.Linear(n_flatten2, network_configs["features_dim"][1]), nn.ReLU())
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         # print("observations.shape:", observations.shape)
@@ -170,7 +173,7 @@ configs = {
             "net_arch": [64, 32],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
-                "features_dim": [64, 16]
+                "network_configs": {"cnn1":[64,64], "cnn2":[16,16], "features_dim": [64, 16]}
         }}
     },
     "dagger_trainer": {
@@ -179,6 +182,8 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
+        "delta_beta": 0.005, # The amount that beta decreases by each round.
+        "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
     }
 }
 
@@ -218,7 +223,7 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=CustomBetaSchedule(custom_logger),
+    beta_schedule=CustomBetaSchedule(custom_logger, delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
 
 ############# Start training #############
