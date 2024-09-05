@@ -50,28 +50,17 @@ def fromStateToObservation(game_state):
         
         # print("explosion_field in Env: \n",explosion_field)
         
-        field = field.flatten()
-        explosion_field = explosion_field.flatten()
-        observation = np.concatenate((field, explosion_field)).flatten()
+        observation = np.stack((field, explosion_field))
 
-        assert spaces.MultiDiscrete(nvec=one_array * (max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4)), dtype = np.uint8).contains(observation)
+        assert spaces.Box(low=0,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS,s.COLS), dtype = np.uint8).contains(observation)
 
         return observation
 
+
 def fromObservationToState(observation):
     # Reconstruct the game state from the observation
-
-    # Size of each array part
-    field_size = s.COLS * s.ROWS
-    explosion_size = s.COLS * s.ROWS
-
-    # Split the observation into field and explosion_field
-    field_flat = observation[:field_size]
-    explosion_field_flat = observation[field_size:field_size + explosion_size]
-
-    # Reshape the flattened arrays back into (COLS, ROWS) shape
-    field = field_flat.reshape(s.COLS, s.ROWS)
-    explosion_field = explosion_field_flat.reshape(s.COLS, s.ROWS)
+    field = observation[0]
+    explosion_field = observation[1]
 
     # Initialize game state components
     game_state = {
@@ -135,7 +124,7 @@ class CustomEnv(gym.Env):
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
         
         one_array = np.ones(s.COLS * s.ROWS * 2)
-        self.observation_space = spaces.MultiDiscrete(nvec=one_array * (max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4)), dtype = np.uint8)
+        self.observation_space = spaces.Box(low=0,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS,s.COLS), dtype = np.uint8)
             # observation space consists of two parts
             # first part is the field without bomb
             # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
@@ -190,8 +179,9 @@ class CustomEnv(gym.Env):
                 truncated = True
             else:
                 truncated = False
-            return np.zeros(s.COLS * s.ROWS * 2), 0, terminated, truncated, {}
-
+            return np.zeros((2,s.ROWS, s.COLS),dtype=np.uint8), 0, terminated, truncated, {}
+            # game_state = self.world.get_state_for_agent(self.my_agent)
+        
         self.world.do_step(ACTION_MAP[action])
         self.user_input = None
 
@@ -309,8 +299,9 @@ class CustomEnv(gym.Env):
         for a in self.world.agents:
             if a.name != "user_agent":
                 other_scores.append(a.total_score)
-            else:
+            else: # user_agent
                 user_agent_score = a.total_score
+                agent_events = a.events
 
         self.world.end()
 
@@ -318,7 +309,7 @@ class CustomEnv(gym.Env):
             # reset all agents
             a.reset()
 
-        return user_agent_score > max(other_scores), other_scores, user_agent_score # return True if user_agent wins
+        return user_agent_score > max(other_scores), other_scores, user_agent_score, agent_events # return True if user_agent wins
 
 
 from gymnasium import register

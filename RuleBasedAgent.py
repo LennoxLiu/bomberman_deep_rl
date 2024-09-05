@@ -94,6 +94,7 @@ class RuleBasedAgent():
         what it contains.
         """
         game_state = fromObservationToState(observation)
+        # print("game_state in RuleBasedAgent:", game_state)
 
         if self.has_memory:
             # Check if we are in a different round

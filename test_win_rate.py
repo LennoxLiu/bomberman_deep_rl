@@ -26,6 +26,7 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
         terminated = False
         truncated = False
         temp_actions = []
+        temp_rewards = []
         while not terminated and not truncated:
             if rule_based_agent:
                 action = user_agent.act(observation) # for RuleBasedAgent
@@ -38,7 +39,9 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
             
             observation, reward, terminated, truncated, game_state = env.step(action)
             # print("game_state in test:", game_state)
-        agent_win, other_scores, user_agent_score = env.close()
+            temp_rewards.append(reward)
+
+        agent_win, other_scores, user_agent_score, agent_events = env.close()
         
         total_score += user_agent_score
 
@@ -46,16 +49,19 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
             win_count += 1
             if verbose:
                 print(f'score: {user_agent_score}, others scores: {other_scores} ')
-        
+                print("agent events:",agent_events)
+                print("rewards:",temp_rewards[-5:])
+
         if verbose:
             print(f'Round {i} done. Time elapsed: {time.time() - start_time:.0f}s Win rate: {win_count / rounds:.2f}, Score this round: {user_agent_score:.2f}')
-           # print("len(actions):",len(temp_actions))
+            # print("len(actions):",len(temp_actions))
+            
 
     return win_count / rounds, total_score / rounds
 
 
 if __name__ == '__main__':
-    # env = gym.make('CustomEnv-v1')
+    env = gym.make('CustomEnv-v1')
 
     # agent=load_policy(
     #     "ppo",
@@ -63,8 +69,8 @@ if __name__ == '__main__':
     #     path="checkpoints/checkpoint00006/gen_policy/model"
     # )
 
-    # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
-    # exit(0)
+    print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),10, rule_based_agent=True,verbose=True))
+    exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
     turns = 10
     num_processes = 14

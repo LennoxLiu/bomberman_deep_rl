@@ -35,7 +35,7 @@ def simulate_trajectory(turn_id, rounds=100):
                 temp_obs.append(observation)
                 temp_rewards.append(reward)
 
-        agent_win, other_scores, user_agent_score = env.close()
+        agent_win, other_scores, user_agent_score, agent_events = env.close()
         
         print("len(actions):",len(temp_actions))
         if agent_win:
