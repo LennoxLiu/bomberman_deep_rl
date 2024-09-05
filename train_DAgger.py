@@ -145,7 +145,7 @@ configs = {
     "bc_trainer": {
         "batch_size": 256, # The number of samples in each batch of expert data.
         "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
-
+        "l2_weight": 5e-4,
         "policy":{
             "learning_rate": 0.0003,
             "net_arch": [128, 64, 32],
@@ -171,6 +171,7 @@ time_steps_per_round = configs["dagger_trainer"]["rollout_round_min_timesteps"]*
 bc_trainer = bc.BC(
     batch_size=configs['bc_trainer']['batch_size'],
     minibatch_size=configs['bc_trainer']['minibatch_size'],
+    l2_weight=configs['bc_trainer']['l2_weight'],
     policy=ActorCriticPolicy(
         env.observation_space,
         env.action_space,
@@ -223,7 +224,7 @@ while True:
 
         # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
         #     pickle.dump(dagger_trainer, file)
-    win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=20, verbose=False)
+    win_rate, score_per_round = test_against_RuleBasedAgent(0, dagger_trainer.policy, rounds=50, verbose=False)
     print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
     score_per_rounds.append(score_per_round)
