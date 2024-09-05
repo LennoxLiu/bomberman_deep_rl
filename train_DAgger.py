@@ -54,7 +54,7 @@ def callback(round_num: int, /) -> None:
     # if checkpoint_interval > 0 and  round_num % checkpoint_interval == 0:
     save(bc_trainer, pathlib.Path(f"checkpoints/checkpoint{round_num:05d}"))
 
-SEED = 43
+SEED = 42
 rng = np.random.default_rng(SEED)
 env = make_vec_env(
     'CustomEnv-v1',
@@ -101,14 +101,14 @@ class CustomCNN(BaseFeaturesExtractor):
             nn.ReLU(),
             nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=0),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
         self.cnn2 = nn.Sequential(
             nn.Conv2d(n_input_channels, 32, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=3, stride=3, padding=0),
+            nn.Conv2d(32, 32, kernel_size=3, stride=1, padding=0),
             nn.ReLU(),
             nn.Flatten(),
         )
@@ -145,13 +145,13 @@ configs = {
     "bc_trainer": {
         "batch_size": 256, # The number of samples in each batch of expert data.
         "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
-        "l2_weight": 1e-6,
+        "l2_weight": 1e-7, # default: 0
         "policy":{
-            "learning_rate": 0.0003,
-            "net_arch": [128, 64, 64, 32],
+            "learning_rate": 0.0003, # default 3e-4
+            "net_arch": [64, 32],
             "features_extractor_class": "CustomCNN",
             "features_extractor_kwargs": {
-                "features_dim": [128, 64]
+                "features_dim": [64, 32]
         }}
     },
     "dagger_trainer": {
