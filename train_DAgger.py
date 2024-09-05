@@ -97,12 +97,12 @@ class CustomBetaSchedule(BetaSchedule):
         self.beta = 1
 
     def  __call__(self, round_num: int) -> float:
-        self.beta -= 0.01
+        self.beta -= 0.002
         self.beta = max(self.beta, self.beta_final)
 
-        # self.logger.record("dagger/beta", self.beta)
-        # self.logger.dump(step=round_num)
-        self.logger.add_scalar("dagger/beta", self.beta, round_num)
+        self.logger.record("dagger/beta", self.beta)
+        self.logger.dump(step=round_num)
+        # self.logger.add_scalar("dagger/beta", self.beta, round_num)
         return self.beta
 
 
@@ -210,6 +210,7 @@ start_time = time.time()
 win_rates = []
 score_per_rounds = []
 os.makedirs('checkpoints', exist_ok=True)
+os.makedirs('logs/tensorboard_logs/beta', exist_ok=True)
 dagger_trainer = SimpleDAggerTrainer(
     venv=env,
     scratch_dir='checkpoints',
@@ -217,7 +218,7 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=CustomBetaSchedule(SummaryWriter(log_dir='logs/tensorboard_logs/beta')),
+    beta_schedule=CustomBetaSchedule(custom_logger),
 )
 
 ############# Start training #############
