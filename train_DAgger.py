@@ -218,7 +218,7 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "beta0": 0.75, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
+        "beta0": 0.9, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
         # "delta_beta": 0.05, # The amount that beta decreases by each round.
         "beta_final": 0.1, # The final value of beta. The probability of using the expert policy instead of the learner policy.
         "decrease_beta": 0.05, # The amount that beta decreases by each round.
@@ -334,7 +334,7 @@ def load_tensorboard_log(tag,log_dir='logs/tensorboard_logs'):
 
     # Access scalar metrics like 'loss' or 'accuracy'
     if tag in event_acc.Tags()['scalars']:
-        loss_events = event_acc.Scalars('loss')  # Get all events for 'loss'
+        loss_events = event_acc.Scalars(tag)  # Get all events for 'loss'
 
     return loss_events
 
