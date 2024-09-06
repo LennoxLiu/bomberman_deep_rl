@@ -30,6 +30,7 @@ from torch.utils.tensorboard import SummaryWriter
 from imitation.algorithms.dagger import BetaSchedule
 from imitation.util import util
 from imitation.algorithms.bc import BCLogger
+from stable_baselines3.common.monitor import Monitor
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -63,7 +64,13 @@ env = make_vec_env(
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
     log_dir='logs',
 )
-
+env_test = make_vec_env(
+    'CustomEnv-v1',
+    rng=np.random.default_rng(SEED),
+    n_envs=8,
+    post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
+    log_dir='logs',
+)
 expert = RuleBasedPolicy(env.observation_space, env.action_space)
 
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
@@ -105,6 +112,30 @@ class CustomBetaSchedule(BetaSchedule):
         # self.logger.add_scalar("dagger/beta", self.beta, round_num)
         return self.beta
 
+
+# beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
+class CustomBetaSchedule2(BetaSchedule):
+    def __init__(self, logger, decrease_beta = 0.05,increase_beta = 0.01,beta0 = 1, beta_final: float = 0.05):
+        self.beta_final = beta_final
+        self.logger = logger
+        self.decrease_beta = decrease_beta
+        self.increase_beta = increase_beta
+
+        self.beta = beta0
+
+    def  __call__(self, round_num: int) -> float:
+        self.logger.record("dagger/beta", self.beta)
+        self.logger.dump(step=round_num)
+        return self.beta
+    
+    def decrease(self):
+        self.beta -= self.decrease_beta
+        self.beta = max(self.beta, self.beta_final)
+    
+    def increase(self):
+        self.beta += self.increase_beta
+        self.beta = min(self.beta, 1)
+    
 
 class CustomCNN(BaseFeaturesExtractor):
     """
@@ -188,8 +219,10 @@ configs = {
             "n_epochs": 8, # default: 4
         },
         "beta0": 1, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
-        "delta_beta": 0.01, # The amount that beta decreases by each round.
-        "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
+        # "delta_beta": 0.05, # The amount that beta decreases by each round.
+        "beta_final": 0.1, # The final value of beta. The probability of using the expert policy instead of the learner policy.
+        "decrease_beta": 0.05, # The amount that beta decreases by each round.
+        "increase_beta": 0.01, # The amount that beta increases by each round.
     },
     "SEED":42
 }
@@ -231,7 +264,9 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=CustomBetaSchedule(custom_logger, beta0=configs["dagger_trainer"]["beta0"],delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"]),
+    beta_schedule=CustomBetaSchedule2(custom_logger, decrease_beta=configs["dagger_trainer"]["decrease_beta"], 
+                                      increase_beta=configs["dagger_trainer"]["increase_beta"],
+                                      beta0=configs["dagger_trainer"]["beta0"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
 
 def save_DAgger_trainer(trainer,configs):
@@ -261,7 +296,8 @@ def load_DAgger_trainer(checkpoint_path):
     current_beta = checkpoint['current_beta']
     configs = checkpoint['configs']
     custom_logger = imit_logger.configure(folder='logs/tensorboard_logs',format_strs=["tensorboard"],)
-    betaSchedule=CustomBetaSchedule(custom_logger, beta0=current_beta,delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
+    betaSchedule=CustomBetaSchedule2(custom_logger, beta0=current_beta, decrease_beta=configs["dagger_trainer"]["decrease_beta"], 
+                                      increase_beta=configs["dagger_trainer"]["increase_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
     bc_trainer._bc_logger = BCLogger(custom_logger) # the logger causes thread lock, makes it not pickable
     rng = np.random.default_rng(configs["SEED"])
     env = make_vec_env(
@@ -292,7 +328,7 @@ if not remove_logs_checkpoints and os.path.exists("checkpoints/checkpoint-latest
     dagger_trainer, current_beta, configs = load_DAgger_trainer("checkpoints/checkpoint-latest.pt")
 
 ############# Start training #############
-rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
+rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env_test , 100)
 print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
 
 # total_timesteps (int) – The number of timesteps to train inside the environment. 
@@ -302,6 +338,7 @@ print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
 round_id=1
 custom_logger.record("a/win_rate", 0)
 custom_logger.record("a/score_per_round", 0)
+custom_logger.record("a/learner_reward_ratio", 1)
 custom_logger.dump(step=0)
 while True:
     dagger_trainer.train(total_timesteps = time_steps_per_round,
@@ -330,6 +367,18 @@ while True:
     custom_logger.record("a/win_rate", win_rate)
     custom_logger.record("a/score_per_round", score_per_round)
     custom_logger.dump(step=round_id)
+
+    learner_reward, _ = evaluate_policy(dagger_trainer.policy, env_test , n_eval_episodes=100)
+    expert_reward, _ = evaluate_policy(expert, env_test , n_eval_episodes=100)
+    learner_reward_ratio = np.mean(learner_reward)/np.mean(expert_reward)
+    custom_logger.record("a/learner_reward_ratio", learner_reward_ratio)
+    custom_logger.dump(step=round_id)
+    print(f"Round {round_id} Learner reward ratio: {learner_reward_ratio:.2f}")
+    
+    if learner_reward_ratio > 0.75:
+        dagger_trainer.beta_schedule.decrease()
+    else:
+        dagger_trainer.beta_schedule.increase()
 
     round_id += 1
 
