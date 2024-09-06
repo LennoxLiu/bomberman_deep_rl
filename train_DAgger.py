@@ -29,6 +29,7 @@ import settings as s
 from torch.utils.tensorboard import SummaryWriter
 from imitation.algorithms.dagger import BetaSchedule
 from imitation.util import util
+from imitation.algorithms.bc import BCLogger
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -258,7 +259,7 @@ def load_DAgger_trainer(checkpoint_path):
     configs = checkpoint['configs']
     custom_logger = imit_logger.configure(folder='logs/tensorboard_logs',format_strs=["tensorboard"],)
     betaSchedule=CustomBetaSchedule(custom_logger, beta0=current_beta,delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
-    bc_trainer.logger = custom_logger
+    bc_trainer._bc_logger = BCLogger(custom_logger) # the logger causes thread lock, makes it not pickable
     rng = np.random.default_rng(configs["SEED"])
     env = make_vec_env(
         'CustomEnv-v1',
@@ -284,7 +285,8 @@ def load_DAgger_trainer(checkpoint_path):
 
     return dagger_trainer, current_beta, configs
 
-dagger_trainer, current_beta, configs = load_DAgger_trainer("checkpoints/checkpoint-latest.pt")
+if not remove_logs_checkpoints and os.path.exists("checkpoints/checkpoint-latest.pt"):
+    dagger_trainer, current_beta, configs = load_DAgger_trainer("checkpoints/checkpoint-latest.pt")
 
 ############# Start training #############
 rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
