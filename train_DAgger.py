@@ -149,31 +149,23 @@ class CustomCNN(BaseFeaturesExtractor):
                 th.as_tensor(observation_space.sample()[1].reshape(-1, 1, s.ROWS, s.COLS)).float()
             ).shape[1]
 
-        # self.linear1 = nn.Sequential(nn.Linear(n_flatten1, network_configs["features_dim"][0]), nn.ReLU())
-        # self.linear2 = nn.Sequential(nn.Linear(n_flatten2, network_configs["features_dim"][1]), nn.ReLU())
-        
         linear_config = network_configs['dense']
-        self.linear = nn.Sequential()
-        self.linear.add_module('linear0', nn.Linear(n_flatten1+n_flatten2, linear_config[0]))
-        self.linear.add_module('relu', nn.ReLU())
+        self.dense = nn.Sequential()
+        self.dense.add_module('linear0', nn.Linear(n_flatten1+n_flatten2, linear_config[0]))
+        self.dense.add_module('relu', nn.ReLU())
         for i in range(1, len(linear_config)):
-            self.linear.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
-            self.linear.add_module('relu', nn.ReLU())
+            self.dense.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
+            self.dense.add_module('relu', nn.ReLU())
 
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
-        # print("observations.shape:", observations.shape)
         obs1, obs2 = observations[:,0], observations[:, 1]
-        # print("obs1.shape:", obs1.shape)
-        # print("obs2.shape:", obs2.shape)
         
         # Reshape and standardize the input to [0,1]
         obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS) / 8
         obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
 
-        # print("obs1.shape:", obs1.shape)
-        # print("obs2.shape:", obs2.shape)
-        return self.linear3(th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1))
+        return self.dense(th.cat([self.cnn1(obs1), self.cnn2(obs2)], dim=1))
 
 configs = {
     "bc_trainer": {
