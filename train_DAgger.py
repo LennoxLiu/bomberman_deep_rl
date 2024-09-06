@@ -218,7 +218,7 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "beta0": 1, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
+        "beta0": 0.75, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
         # "delta_beta": 0.05, # The amount that beta decreases by each round.
         "beta_final": 0.1, # The final value of beta. The probability of using the expert policy instead of the learner policy.
         "decrease_beta": 0.05, # The amount that beta decreases by each round.
@@ -268,6 +268,8 @@ dagger_trainer = SimpleDAggerTrainer(
                                       increase_beta=configs["dagger_trainer"]["increase_beta"],
                                       beta0=configs["dagger_trainer"]["beta0"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
+
+
 
 def save_DAgger_trainer(trainer,configs):
     trainer.scratch_dir.mkdir(parents=True, exist_ok=True)
@@ -324,21 +326,30 @@ def load_DAgger_trainer(checkpoint_path):
 
     return dagger_trainer, current_beta, configs
 
+from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+def load_tensorboard_log(tag,log_dir='logs/tesnsorboard_logs'):
+    # Load the event accumulator
+    event_acc = EventAccumulator(log_dir)
+    event_acc.Reload()  # Load the data
+
+    # Access scalar metrics like 'loss' or 'accuracy'
+    if tag in event_acc.Tags()['scalars']:
+        loss_events = event_acc.Scalars('loss')  # Get all events for 'loss'
+
+    return loss_events
+
+
 if not remove_logs_checkpoints and os.path.exists("checkpoints/checkpoint-latest.pt"):
     dagger_trainer, current_beta, configs = load_DAgger_trainer("checkpoints/checkpoint-latest.pt")
 
 ############# Start training #############
-rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env_test , 100)
-print(f"Mean reward before training:{np.mean(rew_before_training):.2f}")
-
-# total_timesteps (int) – The number of timesteps to train inside the environment. 
-# In practice this is a lower bound, because the number of timesteps is rounded up to finish the minimum number of episodes or timesteps in the last DAgger training round, and the environment timesteps are executed in multiples of self.venv.num_envs.
-# for round_id in tqdm(range(30)):
+learner_reward, _ = evaluate_policy(dagger_trainer.policy, env_test , n_eval_episodes=10)
+print(f"Round 0 Learner reward: {learner_reward:.2f}")
 
 round_id=1
 custom_logger.record("a/win_rate", 0)
 custom_logger.record("a/score_per_round", 0)
-custom_logger.record("a/learner_reward_ratio", 1)
+custom_logger.record("a/learner_reward", np.mean(learner_reward))
 custom_logger.dump(step=0)
 while True:
     dagger_trainer.train(total_timesteps = time_steps_per_round,
@@ -368,14 +379,13 @@ while True:
     custom_logger.record("a/score_per_round", score_per_round)
     custom_logger.dump(step=round_id)
 
-    learner_reward, _ = evaluate_policy(dagger_trainer.policy, env_test , n_eval_episodes=100)
-    expert_reward, _ = evaluate_policy(expert, env_test , n_eval_episodes=100)
-    learner_reward_ratio = np.mean(learner_reward)/np.mean(expert_reward)
-    custom_logger.record("a/learner_reward_ratio", learner_reward_ratio)
+    learner_reward, _ = evaluate_policy(dagger_trainer.policy, env_test , n_eval_episodes=10)
+    custom_logger.record("a/learner_reward", np.mean(learner_reward))
     custom_logger.dump(step=round_id)
-    print(f"Round {round_id} Learner reward ratio: {learner_reward_ratio:.2f}")
+    print(f"Round {round_id} Learner reward: {learner_reward:.2f}")
     
-    if learner_reward_ratio > 0.75:
+    mean_reward_list = load_tensorboard_log("dagger/mean_episode_reward")
+    if mean_reward_list[-1] > np.mean(mean_reward_list[:-1]):
         dagger_trainer.beta_schedule.decrease()
     else:
         dagger_trainer.beta_schedule.increase()
