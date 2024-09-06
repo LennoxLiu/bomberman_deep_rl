@@ -114,7 +114,7 @@ class CustomCNN(BaseFeaturesExtractor):
     """
 
     def __init__(self, observation_space: spaces.Box, network_configs: dict):
-        super().__init__(observation_space, features_dim=sum(network_configs['features_dim']))
+        super().__init__(observation_space, features_dim=network_configs['dense'][-1])
         # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
         n_input_channels = 1
 
@@ -122,6 +122,7 @@ class CustomCNN(BaseFeaturesExtractor):
         cnn1_strides = network_configs['cnn1_strides']
         self.cnn1 = nn.Sequential()
         self.cnn1.add_module('conv0', nn.Conv2d(n_input_channels, cnn1_config[0], kernel_size=3, stride=cnn1_strides[0], padding=1))
+        self.cnn1.add_module('relu', nn.ReLU())
         for i in range(1, len(cnn1_config)):
             self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=cnn1_strides[i], padding=1))
             self.cnn1.add_module('relu', nn.ReLU())
@@ -131,12 +132,13 @@ class CustomCNN(BaseFeaturesExtractor):
         cnn2_strides = network_configs['cnn2_strides']
         self.cnn2 = nn.Sequential()
         self.cnn2.add_module('conv0', nn.Conv2d(n_input_channels, cnn2_config[0], kernel_size=3, stride=cnn2_strides[0], padding=1))
+        self.cnn2.add_module('relu', nn.ReLU())
         for i in range(1, len(cnn2_config)):
             self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=cnn2_strides[i], padding=1))
             self.cnn2.add_module('relu', nn.ReLU())
         self.cnn2.add_module('flatten', nn.Flatten())
 
-        # Compute shape by doing one forward pass
+        # # Compute shape by doing one forward pass
         with th.no_grad():
             # print("observation_space.sample().shape:", observation_space.sample().shape)
             # print("type(observation_space.sample())", type(observation_space.sample()))
@@ -147,8 +149,17 @@ class CustomCNN(BaseFeaturesExtractor):
                 th.as_tensor(observation_space.sample()[1].reshape(-1, 1, s.ROWS, s.COLS)).float()
             ).shape[1]
 
-        self.linear1 = nn.Sequential(nn.Linear(n_flatten1, network_configs["features_dim"][0]), nn.ReLU())
-        self.linear2 = nn.Sequential(nn.Linear(n_flatten2, network_configs["features_dim"][1]), nn.ReLU())
+        # self.linear1 = nn.Sequential(nn.Linear(n_flatten1, network_configs["features_dim"][0]), nn.ReLU())
+        # self.linear2 = nn.Sequential(nn.Linear(n_flatten2, network_configs["features_dim"][1]), nn.ReLU())
+        
+        linear_config = network_configs['dense']
+        self.linear = nn.Sequential()
+        self.linear.add_module('linear0', nn.Linear(n_flatten1+n_flatten2, linear_config[0]))
+        self.linear.add_module('relu', nn.ReLU())
+        for i in range(1, len(linear_config)):
+            self.linear.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
+            self.linear.add_module('relu', nn.ReLU())
+
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         # print("observations.shape:", observations.shape)
@@ -162,7 +173,7 @@ class CustomCNN(BaseFeaturesExtractor):
 
         # print("obs1.shape:", obs1.shape)
         # print("obs2.shape:", obs2.shape)
-        return th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1)
+        return self.linear3(th.cat([self.linear1(self.cnn1(obs1)), self.linear2(self.cnn2(obs2))], dim=1))
 
 configs = {
     "bc_trainer": {
@@ -171,11 +182,11 @@ configs = {
         "l2_weight": 1e-7, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": [256, 256, 128, 128, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
+            "net_arch": [512, 512, 256, 256, 128, 128, 128, 128, 64, 64, 32, 32],
             "features_extractor_class": "CustomCNN",
-            "activation_fn": "nn.LeakyReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
+            "activation_fn": "nn.ReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "features_dim": [256, 128]}
+                "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "dense": [512, 512]}
         }}
     },
     "dagger_trainer": {
@@ -205,7 +216,7 @@ bc_trainer = bc.BC(
         env.action_space,
         linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
-        activation_fn=nn.LeakyReLU,
+        activation_fn=nn.ReLU,
         features_extractor_class=CustomCNN,
         features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
