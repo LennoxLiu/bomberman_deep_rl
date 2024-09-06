@@ -152,10 +152,11 @@ class CustomCNN(BaseFeaturesExtractor):
         linear_config = network_configs['dense']
         self.dense = nn.Sequential()
         self.dense.add_module('linear0', nn.Linear(n_flatten1+n_flatten2, linear_config[0]))
-        self.dense.add_module('relu', nn.ReLU())
         for i in range(1, len(linear_config)):
-            self.dense.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
             self.dense.add_module('relu', nn.ReLU())
+            self.dense.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
+        
+        self.dense.add_module('tanh', nn.Tanh()) # to stabilize the output
 
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
@@ -171,7 +172,7 @@ configs = {
     "bc_trainer": {
         "batch_size": 256, # The number of samples in each batch of expert data.
         "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
-        "l2_weight": 1e-7, # 1e-7, default: 0
+        "l2_weight": 0, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
             "net_arch": [512, 512, 256, 256, 128, 128, 128, 128, 64, 64, 32, 32],
