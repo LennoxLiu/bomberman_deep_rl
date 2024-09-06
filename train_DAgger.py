@@ -327,7 +327,7 @@ def load_DAgger_trainer(checkpoint_path):
     return dagger_trainer, current_beta, configs
 
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-def load_tensorboard_log(tag,log_dir='logs/tesnsorboard_logs'):
+def load_tensorboard_log(tag,log_dir='logs/tensorboard_logs'):
     # Load the event accumulator
     event_acc = EventAccumulator(log_dir)
     event_acc.Reload()  # Load the data
