@@ -145,6 +145,53 @@ class CustomCNN(BaseFeaturesExtractor):
         return self.dense(th.cat([self.cnn1(obs1), self.cnn2(obs2)], dim=1))
 
 
+class CustomMLP(BaseFeaturesExtractor):
+    """
+    :param observation_space: (gym.Space)
+    """
+
+    def __init__(self, observation_space: spaces.Box, network_configs: dict):
+        super().__init__(observation_space, features_dim=network_configs['dense'][-1])
+        # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
+        n_input_channels = 1
+
+        dense1_config = network_configs['dense1']
+        self.dense1 = nn.Sequential()
+        self.dense1.add_module('flatten', nn.Flatten())
+        self.dense1.add_module('linear', nn.Linear(n_input_channels, dense1_config[0]))
+        self.dense1.add_module('relu', nn.ReLU())
+        for i in range(1, len(dense1_config)):
+            self.dense1.add_module('linear'+str(i), nn.Linear(dense1_config[i-1], dense1_config[i]))
+            self.dense1.add_module('relu', nn.ReLU())
+
+        dense2_config = network_configs['dense2']
+        self.dense2 = nn.Sequential()
+        self.dense2.add_module('flatten', nn.Flatten())
+        self.dense2.add_module('linear', nn.Linear(n_input_channels, dense2_config[0]))
+        self.dense2.add_module('relu', nn.ReLU())
+        for i in range(1, len(dense2_config)):
+            self.dense2.add_module('linear'+str(i), nn.Linear(dense2_config[i-1], dense2_config[i]))
+            self.dense2.add_module('relu', nn.ReLU())
+
+        dense_config = network_configs['dense']
+        self.dense = nn.Sequential()
+        self.dense.add_module('linear0', nn.Linear(dense1_config[-1]+dense2_config[-1], dense_config[0]))
+        self.dense.add_module('relu', nn.ReLU())
+        for i in range(1, len(dense_config)):
+            self.dense.add_module('linear'+str(i), nn.Linear(dense_config[i-1], dense_config[i]))
+            self.dense.add_module('relu', nn.ReLU())
+    
+
+    def forward(self, observations: th.Tensor) -> th.Tensor:
+        obs1, obs2 = observations[:,0], observations[:, 1]
+        
+        # Reshape and standardize the input to [0,1]
+        obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS) / 8
+        obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+
+        return self.dense(th.cat([self.dense1(obs1), self.dense2(obs2)], dim=1))
+
+
 def save_DAgger_trainer(trainer,configs):
     trainer.scratch_dir.mkdir(parents=True, exist_ok=True)
 
