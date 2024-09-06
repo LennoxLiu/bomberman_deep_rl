@@ -46,10 +46,7 @@ if remove_logs_checkpoints.lower() == 'y':
 os.makedirs('logs/tensorboard_logs', exist_ok=True)
 # Configure the custom logger to use the SummaryWriter
 # custom_logger = SummaryWriter(log_dir='logs/tensorboard_logs')
-custom_logger = imit_logger.configure(
-        folder='logs/tensorboard_logs',
-        format_strs=["tensorboard"],
-    )
+custom_logger = imit_logger.configure(folder='logs/tensorboard_logs',format_strs=["tensorboard"],)
 
 os.makedirs('checkpoints', exist_ok=True)
 def callback(round_num: int, /) -> None:
@@ -90,12 +87,12 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 # beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
 class CustomBetaSchedule(BetaSchedule):
-    def __init__(self, logger, delta_beta = 0.005 ,beta_final: float = 0.05):
+    def __init__(self, logger, delta_beta = 0.005 ,beta0 = 1, beta_final: float = 0.05):
         self.beta_final = beta_final
         self.logger = logger
         self.delta_beta = delta_beta
 
-        self.beta = 1
+        self.beta = beta0
 
     def  __call__(self, round_num: int) -> float:
         if round_num % 5 == 0:
@@ -175,6 +172,7 @@ configs = {
             "learning_rate": 0.0003, # default 3e-4
             "net_arch": [256, 256, 128, 128, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
             "features_extractor_class": "CustomCNN",
+            "activation_fn": "th.nn.ReLU", # default: "th.nn.Tanh"
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "features_dim": [256, 128]}
         }}
@@ -185,9 +183,10 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "delta_beta": 0.01, # The amount that beta decreases by each round.
+        "delta_beta": 0.05, # The amount that beta decreases by each round.
         "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
-    }
+    },
+    "SEED":42
 }
 
 time_steps_per_round = configs["dagger_trainer"]["rollout_round_min_timesteps"]*configs["dagger_trainer"]['bc_train_kwargs']['n_epochs']
@@ -204,6 +203,7 @@ bc_trainer = bc.BC(
         env.action_space,
         linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
+        activation_fn=th.nn.ReLU,
         features_extractor_class=CustomCNN,
         features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
@@ -226,8 +226,9 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=CustomBetaSchedule(custom_logger, delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"]),
+    beta_schedule=CustomBetaSchedule(custom_logger, beta0=configs["dagger_trainer"]["beta0"],delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
+
 def save_DAgger_trainer(trainer,configs):
     trainer.scratch_dir.mkdir(parents=True, exist_ok=True)
 
@@ -248,6 +249,31 @@ def save_DAgger_trainer(trainer,configs):
         th.save(trainer_dict, checkpoint_path)
 
 
+def load_DAgger_trainer(checkpoint_path):
+    checkpoint = th.load(checkpoint_path)
+    policy = checkpoint['policy']
+    bc_trainer = checkpoint['bc_trainer']
+    current_beta = checkpoint['current_beta']
+    configs = checkpoint['configs']
+    custom_logger = imit_logger.configure(folder='logs/tensorboard_logs',format_strs=["tensorboard"],)
+    betaSchedule=CustomBetaSchedule(custom_logger, beta0=configs["dagger_trainer"]["beta0"],delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
+    env = make_vec_env(
+        'CustomEnv-v1',
+        rng=np.random.default_rng(configs["SEED"]),
+        n_envs=8,
+        post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
+        log_dir='logs',
+    )
+    dagger_trainer = SimpleDAggerTrainer(
+        venv=env,
+        scratch_dir='checkpoints',
+        expert_policy=policy,
+        bc_trainer=bc_trainer,
+        rng=rng,
+        custom_logger=custom_logger,
+        beta_schedule=betaSchedule,
+    )
+    return dagger_trainer, current_beta, configs
 
 ############# Start training #############
 rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
