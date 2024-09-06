@@ -152,12 +152,11 @@ class CustomCNN(BaseFeaturesExtractor):
         linear_config = network_configs['dense']
         self.dense = nn.Sequential()
         self.dense.add_module('linear0', nn.Linear(n_flatten1+n_flatten2, linear_config[0]))
+        self.dense.add_module('relu', nn.ReLU())
         for i in range(1, len(linear_config)):
-            self.dense.add_module('relu', nn.ReLU())
             self.dense.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
-        
-        self.dense.add_module('tanh', nn.Tanh()) # to stabilize the output
-
+            self.dense.add_module('relu', nn.ReLU())
+    
 
     def forward(self, observations: th.Tensor) -> th.Tensor:
         obs1, obs2 = observations[:,0], observations[:, 1]
