@@ -172,7 +172,7 @@ configs = {
             "learning_rate": 0.0003, # default 3e-4
             "net_arch": [256, 256, 128, 128, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
             "features_extractor_class": "CustomCNN",
-            "activation_fn": "th.nn.ReLU", # default: "th.nn.Tanh"
+            "activation_fn": "nn.LeakyReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "features_dim": [256, 128]}
         }}
@@ -183,7 +183,8 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "delta_beta": 0.05, # The amount that beta decreases by each round.
+        "beta0": 1, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
+        "delta_beta": 0.01, # The amount that beta decreases by each round.
         "beta_final": 0.05, # The final value of beta. The probability of using the expert policy instead of the learner policy.
     },
     "SEED":42
@@ -203,7 +204,7 @@ bc_trainer = bc.BC(
         env.action_space,
         linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
-        activation_fn=th.nn.ReLU,
+        activation_fn=nn.LeakyReLU,
         features_extractor_class=CustomCNN,
         features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
@@ -256,10 +257,12 @@ def load_DAgger_trainer(checkpoint_path):
     current_beta = checkpoint['current_beta']
     configs = checkpoint['configs']
     custom_logger = imit_logger.configure(folder='logs/tensorboard_logs',format_strs=["tensorboard"],)
-    betaSchedule=CustomBetaSchedule(custom_logger, beta0=configs["dagger_trainer"]["beta0"],delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
+    betaSchedule=CustomBetaSchedule(custom_logger, beta0=current_beta,delta_beta=configs["dagger_trainer"]["delta_beta"], beta_final=configs["dagger_trainer"]["beta_final"])
+    bc_trainer.logger = custom_logger
+    rng = np.random.default_rng(configs["SEED"])
     env = make_vec_env(
         'CustomEnv-v1',
-        rng=np.random.default_rng(configs["SEED"]),
+        rng=rng,
         n_envs=8,
         post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],  # to compute rollouts
         log_dir='logs',
@@ -273,7 +276,15 @@ def load_DAgger_trainer(checkpoint_path):
         custom_logger=custom_logger,
         beta_schedule=betaSchedule,
     )
+    print(f"Loaded DAgger trainer from {checkpoint_path}")
+    
+    if os.path.exists('checkpoints/demos'):
+        shutil.rmtree('checkpoints/demos')
+        print("Removed 'checkpoints/demos' folder to generate new data")
+
     return dagger_trainer, current_beta, configs
+
+dagger_trainer, current_beta, configs = load_DAgger_trainer("checkpoints/checkpoint-latest.pt")
 
 ############# Start training #############
 rew_before_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
