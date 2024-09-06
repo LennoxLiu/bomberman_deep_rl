@@ -168,12 +168,12 @@ configs = {
     "bc_trainer": {
         "batch_size": 256, # The number of samples in each batch of expert data.
         "minibatch_size": 256, # if GPU memory is not enough, reduce this number to a factor of batch_size
-        "l2_weight": 0, # 1e-7, default: 0
+        "l2_weight": 1e-7, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
             "net_arch": [256, 256, 128, 128, 128, 128, 64, 64, 64, 64, 32, 32, 32, 32],
             "features_extractor_class": "CustomCNN",
-            "activation_fn": "nn.ReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
+            "activation_fn": "nn.LeakyReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1":[32,64,128,256],"cnn1_strides":[1,1,2,2], "cnn2":[32,64,128],"cnn2_strides":[1,1,2], "features_dim": [256, 128]}
         }}
@@ -205,7 +205,7 @@ bc_trainer = bc.BC(
         env.action_space,
         linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
-        activation_fn=nn.ReLU,
+        activation_fn=nn.LeakyReLU,
         features_extractor_class=CustomCNN,
         features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
