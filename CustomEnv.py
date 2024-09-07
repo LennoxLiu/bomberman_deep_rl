@@ -19,9 +19,8 @@ ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
         observation = None
-        one_array = np.ones(s.COLS * s.ROWS*2)
         # 0: stone walls, 1: free tiles, 2: crates, 
-        field = game_state["field"].astype(np.uint8) + 1
+        field = game_state["field"].astype(np.int8) + 1
         #3: coins,
         for coin in game_state["coins"]:
             field[coin] = 3
@@ -32,11 +31,12 @@ def fromStateToObservation(game_state):
             else:
                 field[other[3]] = 5
 
+        # 6: self, 7: self with bomb
         field[game_state['self'][3]] = 6 if game_state['self'][2] == False else 7
 
         # 0: nothing
         # 1~s.EXPLOSION_TIMER: explosion map
-        explosion_field = game_state["explosion_map"].astype(np.uint8)
+        explosion_field = game_state["explosion_map"].astype(np.int8)
         # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
             explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER + 1 # overlay bomb on explosion
@@ -48,12 +48,29 @@ def fromStateToObservation(game_state):
         # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3 self
         explosion_field[game_state['self'][3]] = s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3
         
-        # print("explosion_field in Env: \n",explosion_field)
+        # Get the agent's position
+        agent_x, agent_y = game_state['self'][3]
         
-        observation = np.stack((field, explosion_field))
+        # The agent's centered position in the observation
+        # center_x, center_y = s.ROWS, s.COLS
 
-        assert spaces.Box(low=0,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS,s.COLS), dtype = np.uint8).contains(observation)
+        # Calculate the padding needed to ensure the agent is centered in the (s.ROWS*2-1) x (s.COLS*2-1) matrix
+        pad_left = s.COLS - agent_y
+        pad_right = agent_y + 1
+        pad_top = s.ROWS - agent_x
+        pad_bottom = agent_x + 1
 
+        # Apply padding to both cropped matrices
+        padded_field = np.pad(field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
+        padded_explosion_field = np.pad(explosion_field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
+
+        # Stack the padded field and explosion field into the observation
+        observation = np.stack((padded_field, padded_explosion_field))
+        
+        # Check that the observation fits within the expected size
+        assert observation.shape == (2,s.ROWS*2 + 1,s.COLS*2 + 1)
+        assert spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
+        
         return observation
 
 
@@ -72,41 +89,76 @@ def fromObservationToState(observation):
         'explosion_map': np.zeros((s.COLS, s.ROWS), dtype=np.int8)
     }
 
-    # Decode the field
-    for x in range(s.COLS):
-        for y in range(s.ROWS):
-            value = field[x, y]
-            if value == 0:
-                game_state['field'][x, y] = -1  # Stone walls
-            elif value == 1:
-                game_state['field'][x, y] = 0  # Free tile
-            elif value == 2:
-                game_state['field'][x, y] = 1  # Crates
-            elif value == 3:
-                game_state['coins'].append((x, y))  # Coins
-            elif value == 4:
-                game_state['others'].append(('rule_based_agent', 0, False, (x, y)))  # Opponent without bomb
-            elif value == 5:
-                game_state['others'].append(('rule_based_agent', 0, True, (x, y)))  # Opponent with bomb
-            elif value == 6:
-                game_state['self'] = ('user_agent', 0, False, (x, y))  # Self without bomb
-            elif value == 7:
-                game_state['self'] = ('user_agent', 0, True, (x, y))  # Self with bomb
+    # Define the size of the centered observation
+    obs_size_x = s.ROWS * 2 + 1
+    obs_size_y = s.COLS * 2 + 1
+
+    # The agent's centered position in the observation
+    center_x, center_y = s.ROWS, s.COLS
+
+    for row_id in range(0,center_x):
+        if explosion_field[row_id][center_y] == 0 and field[row_id-1][center_y] == -1:
+            agent_x = center_x - row_id
+            break
+    for col_id in range(0,center_y):
+        if explosion_field[center_x][col_id] == 0 and field[center_x][col_id-1] == -1:
+            agent_y = center_y - col_id
+            break
+
+    # Offsets used to map observation back to the game grid
+    x_offset = agent_x - center_x
+    y_offset = agent_y - center_y
+
+    # Decode the field by iterating over the observation and mapping it to the original game grid
+    for obs_x in range(obs_size_x):
+        for obs_y in range(obs_size_y):
+            value = field[obs_x, obs_y]
+
+            # Calculate the original grid coordinates
+            original_x = obs_x + x_offset
+            original_y = obs_y + y_offset
+
+            # Check if the original coordinates are within the valid grid bounds
+            if 0 <= original_x < s.ROWS and 0 <= original_y < s.COLS:
+                if value == 0:
+                    game_state['field'][original_x, original_y] = -1  # Stone walls
+                elif value == 1:
+                    game_state['field'][original_x, original_y] = 0  # Free tile
+                elif value == 2:
+                    game_state['field'][original_x, original_y] = 1  # Crates
+                elif value == 3:
+                    game_state['coins'].append((original_x, original_y))  # Coins
+                elif value == 4:
+                    game_state['others'].append(('rule_based_agent', 0, False, (original_x, original_y)))  # Opponent without bomb
+                elif value == 5:
+                    game_state['others'].append(('rule_based_agent', 0, True, (original_x, original_y)))  # Opponent with bomb
+                elif value == 6:
+                    game_state['self'] = ('user_agent', 0, False, (original_x, original_y))  # Self without bomb
+                elif value == 7:
+                    game_state['self'] = ('user_agent', 0, True, (original_x, original_y))  # Self with bomb
 
     # Decode the explosion_field (bombs, explosions)
-    for x in range(s.COLS):
-        for y in range(s.ROWS):
-            value = explosion_field[x, y]
-            if value > 0 and value <= s.EXPLOSION_TIMER:
-                game_state['explosion_map'][x, y] = value  # Explosion timer
-            elif value > s.EXPLOSION_TIMER and value <= s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER:
-                game_state['bombs'].append(((x, y), value - s.EXPLOSION_TIMER -1))  # Bomb with timer
-            elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 2:
-                # Already decoded as others
-                pass
-            elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 3:
-                # Already decoded as self
-                pass
+    for obs_x in range(obs_size_x):
+        for obs_y in range(obs_size_y):
+            value = explosion_field[obs_x, obs_y]
+
+            # Calculate the original grid coordinates
+            original_x = obs_x + x_offset
+            original_y = obs_y + y_offset
+
+            # Check if the original coordinates are within the valid grid bounds
+            if 0 <= original_x < s.ROWS and 0 <= original_y < s.COLS:
+                if value > 0 and value <= s.EXPLOSION_TIMER:
+                    game_state['explosion_map'][original_x, original_y] = value  # Explosion timer
+                 # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer
+                elif value > s.EXPLOSION_TIMER and value <= s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER:
+                    game_state['bombs'].append(((original_x, original_y), value - s.EXPLOSION_TIMER - 1))  # Bomb with timer
+                elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 2:
+                    # Already decoded as others
+                    pass
+                elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 3:
+                    # Already decoded as self
+                    pass
 
     return game_state
 
@@ -122,19 +174,21 @@ class CustomEnv(gym.Env):
         # They must be gym.spaces objects
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
-        
-        one_array = np.ones(s.COLS * s.ROWS * 2)
-        self.observation_space = spaces.Box(low=0,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS,s.COLS), dtype = np.uint8)
+        self.observation_space = spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
             # observation space consists of two parts
             # first part is the field without bomb
+            # -1: outside of game field
             # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
             # 4: no bomb opponents, 5: has bomb opponents,
             # 6: self, 7: self with bomb
 
             # second part is the explosion_map with bomb
+            # -1: outside of game field
             # 0: nothing
             # 1~s.EXPLOSION_TIMER: explosion map
             # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
+
+            # both parts are alined to make my agent in the center of the observation space
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
