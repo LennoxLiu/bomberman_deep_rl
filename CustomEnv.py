@@ -224,7 +224,7 @@ class CustomEnv(gym.Env):
             if current_dist < closest_dist:
                 self.dist_to_opponent[index] = (current_dist, current_dist)
                 if closest_dist != s.COLS+s.ROWS:
-                    closer_to_opponent_reward += 0.1 # the agent is in the closest distance so far to an opponent
+                    closer_to_opponent_reward += 0.02 # the agent is in the closest distance so far to an opponent
                 closest_dist = current_dist
 
             if current_dist < last_dist:
@@ -255,17 +255,17 @@ class CustomEnv(gym.Env):
             elif event == e.COIN_FOUND:
                 reward += 0.05
             elif event == e.COIN_COLLECTED:
-                reward += 0.2
+                reward += 1
             elif event == e.KILLED_OPPONENT:
-                reward += 1.0
+                reward += 5
             elif event == e.KILLED_SELF:
-                reward -= 0.25
+                reward -= 0.025
             elif event == e.GOT_KILLED:
-                reward -= 0.5
+                reward -= 0.05
             elif event == e.OPPONENT_ELIMINATED:
                 reward -= 0
             elif event == e.SURVIVED_ROUND:
-                reward += 1.0
+                reward += 0.5
 
         reward -= 0.01 # penalty per iteration
         return observation, reward, terminated, truncated, game_state # output game_state as info
