@@ -67,7 +67,7 @@ configs = {
         "l2_weight": 1e-8, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": dict(pi=[256,128,64,32], vf=[256, 128, 64, 64, 64, 64 , 32, 32]), 
+            "net_arch": dict(pi=[256,256,128,64,32], vf=[256, 256, 128, 128, 64, 64, 32, 32]), 
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "features_extractor_kwargs": {
@@ -80,7 +80,7 @@ configs = {
         "bc_train_kwargs": {
             "n_epochs": 8, # default: 4
         },
-        "beta0": 0.75, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
+        "beta0": 0.9, # The initial value of beta. The probability of using the expert policy instead of the learner policy.
         # "delta_beta": 0.05, # The amount that beta decreases by each round.
         "beta_final": 0.1, # The final value of beta. The probability of using the expert policy instead of the learner policy.
         "decrease_beta": 0.05, # The amount that beta decreases by each round.
