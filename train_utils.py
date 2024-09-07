@@ -17,7 +17,7 @@ from imitation.util import logger as imit_logger
 from imitation.data.wrappers import RolloutInfoWrapper
 import torch.nn as nn
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-
+import torch.nn.functional as F
 
 def linear_schedule(initial_value: float) -> Callable[[float], float]:
     """
@@ -92,9 +92,9 @@ class CustomCNN(BaseFeaturesExtractor):
 
     def __init__(self, observation_space: spaces.Box, network_configs: dict):
         super().__init__(observation_space, features_dim=network_configs['dense'][-1])
-        # We assume 2x1xROWxCOL image (1 channel), but input as (HxWx2)
+        # We assume 2x1xROWxCOL image (1 channel)
         n_input_channels = 1
-
+        self.crop_range = network_configs['crop_range']
         cnn1_config = network_configs['cnn1']
         cnn1_strides = network_configs['cnn1_strides']
         self.cnn1 = nn.Sequential()
@@ -135,14 +135,63 @@ class CustomCNN(BaseFeaturesExtractor):
             self.dense.add_module('relu', nn.ReLU())
     
 
+    # observation: (batch_size, 2, ROWS, COLS)
     def forward(self, observations: th.Tensor) -> th.Tensor:
         obs1, obs2 = observations[:,0], observations[:, 1]
         
-        # Reshape and standardize the input to [0,1]
-        obs1 = obs1.reshape(-1, 1, s.ROWS, s.COLS) / 8
-        obs2 = obs2.reshape(-1, 1, s.ROWS, s.COLS) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+        # Get the agent positions and crop around them
+        cropped_obs1 = self.crop_around_agent(obs1, [6,7] , self.crop_range)
+        cropped_obs2 = self.crop_around_agent(obs2, [s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3], self.crop_range)
 
-        return self.dense(th.cat([self.cnn1(obs1), self.cnn2(obs2)], dim=1))
+
+        # Reshape and standardize the input to [0,1]
+        cropped_obs1 = cropped_obs1.reshape(-1, 1, self.crop_range, self.crop_range) / 8
+        cropped_obs2 = cropped_obs2.reshape(-1, 1, self.crop_range, self.crop_range) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+        
+        return self.dense(th.cat([self.cnn1(cropped_obs1), self.cnn2(cropped_obs2)], dim=1))
+
+    # Crop the observation around the agent's position
+    # field_size: size x size, must be odd
+    def crop_around_agent(self, obs: th.Tensor, agent_value_list: list, field_size = 29) -> th.Tensor:
+        # Initialize a list to hold the cropped observations
+        cropped_obs = []
+        batch_size = obs.shape[0]
+        for i in range(batch_size):
+            # Find the agent's position in the current observation
+            agent_pos = th.where(th.isin(obs[i], th.tensor(agent_value_list).to(obs.device)))
+
+            # If agent is found, get the coordinates (x, y)
+            if len(agent_pos[0]) > 0:
+                x, y = agent_pos[0][0], agent_pos[1][0]
+            else:
+                # If no agent is found, throw an error
+                raise ValueError("Agent not found in the observation")
+
+            small = int((field_size-1)/2)
+            large = int((field_size+1)/2)
+            # Define the boundaries of the 7x7 grid
+            min_x = max(0, x - small)
+            max_x = min(s.ROWS, x + large)
+            min_y = max(0, y - small)
+            max_y = min(s.COLS, y + large)
+
+            # Crop the observation to the field_size x field_size grid
+            cropped = obs[i, min_x:max_x, min_y:max_y]
+
+            # Calculate padding required to center the agent at (3, 3)
+            pad_left = max(0, small - y)
+            pad_right = max(0, (y + large) - s.COLS)
+            pad_top = max(0, small - x)
+            pad_bottom = max(0, (x + large) - s.ROWS)
+
+            # Apply padding to the cropped observation to make it 7x7 and center the agent
+            padded = F.pad(cropped, (pad_left, pad_right, pad_top, pad_bottom), value=-1)
+            # Add the padded observation to the list
+            cropped_obs.append(padded)
+
+        # Stack all cropped observations back into a tensor
+        return th.stack(cropped_obs)
+
 
 
 def save_DAgger_trainer(trainer,configs):
