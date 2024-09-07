@@ -73,7 +73,7 @@ configs = {
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1":[32,64,128],"cnn1_strides":[1,1,2],
                                      "cnn2":[32,64,128],"cnn2_strides":[1,1,2],
-                                       "dense": [256]}
+                                       "dense": [256],"crop_size":17}
         }}
     },
     "dagger_trainer": {
