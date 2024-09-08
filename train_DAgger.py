@@ -205,7 +205,7 @@ while True:
 
     mean_reward_list = tu.load_tensorboard_log("dagger/mean_episode_reward")
     mean_range = configs["dagger_trainer"]["mean_range"]
-    if len(mean_reward_list) > 2* mean_range:
+    if len(mean_reward_list) >= 2* mean_range:
         # mean reward of last rounds
         new_mean = np.mean(mean_reward_list[-mean_range:])
         # mean reward of previous rounds
