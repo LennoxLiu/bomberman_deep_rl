@@ -103,8 +103,8 @@ configs = {
         "decrease_beta": 0.05,  # The amount that beta decreases by each round.
         "increase_beta": 0.05,  # The amount that beta increases by each round.
         # The range of reward that is considered as still in recent 5 rounds.
-        "reward_increase_range": 0.05,
-        "reward_decrease_range": 0.05,
+        "reward_increase_range": 0.25,
+        "reward_decrease_range": 0.1,
         "mean_range": 3,  # The number of rounds to calculate the mean reward. 8 is steps per round
     },
     "SEED": 42
@@ -211,6 +211,7 @@ while True:
         new_mean = np.mean(mean_reward_list[-mean_range:])
         # mean reward of all previous rounds
         old_mean = np.mean(mean_reward_list[:-mean_range])
+        print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of all previous rounds: {old_mean:.2f}")
         reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
         reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
         # if mean reward stop increasing, decrease beta
