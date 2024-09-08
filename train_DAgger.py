@@ -67,7 +67,7 @@ configs = {
         "l2_weight": 1e-8, # 1e-7, default: 0
         "policy":{
             "learning_rate": 0.0003, # default 3e-4
-            "net_arch": dict(pi=[128,64,32], vf=[128, 128, 64, 32]), 
+            "net_arch": dict(pi=[256, 128, 64, 32], vf=[256, 256, 128, 128, 64, 32]), 
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "features_extractor_kwargs": {
@@ -153,13 +153,13 @@ while True:
                             bc_train_kwargs=configs["dagger_trainer"]["bc_train_kwargs"],
                         ) # 6600 for 5 mins
 
-    try:
-        # dagger_trainer.save_trainer()
-        #  The created snapshot can be reloaded with `reconstruct_trainer()`.
-        tu.save_DAgger_trainer(dagger_trainer,configs)
-    except Exception as e:
-        print("Error saving trainer:", e)
-        continue
+    # try:
+    #     # dagger_trainer.save_trainer()
+    #     #  The created snapshot can be reloaded with `reconstruct_trainer()`.
+    #     tu.save_DAgger_trainer(dagger_trainer,configs)
+    # except Exception as e:
+    #     print("Error saving trainer:", e)
+    #     continue
 
     # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
     #     pickle.dump(dagger_trainer_copy, file)
