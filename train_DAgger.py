@@ -103,7 +103,7 @@ configs = {
         "decrease_beta": 0.05,  # The amount that beta decreases by each round.
         "increase_beta": 0.05,  # The amount that beta increases by each round.
         # The range of reward that is considered as still in recent 5 rounds.
-        "reward_change_range": 0.2,
+        "reward_change_range": 0.15,
         "mean_range": 8,  # The number of rounds to calculate the mean reward.
     },
     "SEED": 42
