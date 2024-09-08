@@ -214,7 +214,7 @@ while True:
         reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
         reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
         # if mean reward stop increasing, decrease beta
-        if old_mean*(1-reward_decrease_range) < new_mean < old_mean*(1+reward_increase_range):
+        if old_mean*(1-reward_decrease_range) < new_mean and new_mean < old_mean*(1+reward_increase_range):
             dagger_trainer.beta_schedule.decrease()
 
         # if mean reward decrease, increase beta
