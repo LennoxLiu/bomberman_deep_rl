@@ -266,7 +266,7 @@ class CustomEnv(gym.Env):
                 escape_bomb_reward -= 0.000666
 
             # If agent is in a safe cell when there is a bomb nearby
-            if self.manhattan_distance((xb,yb),(x_now,y_now)) < s.BOMB_POWER + 2 and not in_bomb_range(xb,yb,x_now,y_now):
+            if self.manhattan_distance((xb,yb),(x_now,y_now)) <= s.BOMB_POWER + 1 and not in_bomb_range(xb,yb,x_now,y_now):
                 escape_bomb_reward += 0.002
         
         
@@ -278,7 +278,7 @@ class CustomEnv(gym.Env):
             if current_dist < closest_dist:
                 self.dist_to_opponent[index] = (current_dist, current_dist)
                 if closest_dist != s.COLS+s.ROWS:
-                    closer_to_opponent_reward += 0.02 # the agent is in the closest distance so far to an opponent
+                    closer_to_opponent_reward += 0.01 # the agent is in the closest distance so far to an opponent
                 closest_dist = current_dist
 
             if current_dist < last_dist:
