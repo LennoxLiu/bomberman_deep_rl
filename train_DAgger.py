@@ -33,12 +33,12 @@ if remove_logs_checkpoints.lower() == 'y':
         shutil.rmtree('checkpoints')
 
 
-# Create a SummaryWriter for logging to TensorBoard
 os.makedirs('logs/tensorboard_logs', exist_ok=True)
-# Configure the custom logger to use the SummaryWriter
-# custom_logger = SummaryWriter(log_dir='logs/tensorboard_logs')
 custom_logger = imit_logger.configure(
     folder='logs/tensorboard_logs', format_strs=["tensorboard"],)
+shutil.copyfile('train_DAgger.py', 'logs/train_DAgger.py')
+shutil.copyfile('CustomEnv.py', 'logs/CustomEnv.py')
+shutil.copyfile('train_utils.py', 'logs/train_utils.py')
 
 os.makedirs('checkpoints', exist_ok=True)
 
@@ -103,7 +103,8 @@ configs = {
         "decrease_beta": 0.05,  # The amount that beta decreases by each round.
         "increase_beta": 0.05,  # The amount that beta increases by each round.
         # The range of reward that is considered as still in recent 5 rounds.
-        "reward_change_range": 0.1,
+        "reward_change_range": 0.2,
+        "mean_range": 8,  # The number of rounds to calculate the mean reward.
     },
     "SEED": 42
 }
@@ -203,11 +204,12 @@ while True:
     print(f"Round {round_id} Learner reward: {learner_reward:.2f}")
 
     mean_reward_list = tu.load_tensorboard_log("dagger/mean_episode_reward")
-    if len(mean_reward_list) > 10:
-        # mean reward of last 5 rounds
-        new_mean = np.mean(mean_reward_list[-5:])
-        # mean reward of previous 5 rounds
-        old_mean = np.mean(mean_reward_list[-10:-5])
+    mean_range = configs["dagger_trainer"]["mean_range"]
+    if len(mean_reward_list) > 2* mean_range:
+        # mean reward of last rounds
+        new_mean = np.mean(mean_reward_list[-mean_range:])
+        # mean reward of previous rounds
+        old_mean = np.mean(mean_reward_list[-2*mean_range:-mean_range])
         reward_change_range = configs["dagger_trainer"]["reward_change_range"]
         # if mean reward stop increasing, decrease beta
         if old_mean*(1-reward_change_range) < new_mean < old_mean*(1+reward_change_range):

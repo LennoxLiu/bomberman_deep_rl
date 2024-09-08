@@ -80,7 +80,7 @@ class CustomBetaSchedule2(BetaSchedule):
     
     def increase(self):
         self.beta += self.increase_beta
-        self.beta = min(self.beta, 1)
+        self.beta = min(self.beta, 0.95)
     
 
 # crop_size must be odd
