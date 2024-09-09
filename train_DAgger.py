@@ -78,15 +78,15 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[128, 64, 32], vf=[128, 128, 64, 32]),
+            "net_arch": dict(pi=[256, 128, 64, 32], vf=[256, 256, 128, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "maxpool": "at the end of each cnn netwrok",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 1],
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1],
-                                    "dense": [256, 256],
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2],
+                                    "cnn2": [32, 64], "cnn2_strides": [1, 2],
+                                    "dense": [128, 256],
                                     "crop_size": 2*s.ROWS+1
                                 }
             }}
