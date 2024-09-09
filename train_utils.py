@@ -183,11 +183,11 @@ def save_DAgger_trainer(trainer,configs):
 
     # save full trainer checkpoints
     checkpoint_paths = [
-        trainer.scratch_dir / f"checkpoint-{trainer.round_num:03d}.pt",
+        # trainer.scratch_dir / f"checkpoint-{trainer.round_num:03d}.pt",
         trainer.scratch_dir / "checkpoint-latest.pt",
     ]
     for checkpoint_path in checkpoint_paths:
-        th.save(trainer_dict, checkpoint_path)
+        th.save(trainer_dict, checkpoint_path, pickle_protocol=5)
 
 
 def load_DAgger_trainer(checkpoint_path):

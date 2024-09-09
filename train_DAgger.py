@@ -83,9 +83,9 @@ configs = {
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64], "cnn2_strides": [1, 2], "dense2": 256,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
                                     "dense": [512],
-                                    "crop_size": 27# 17, 2*s.ROWS+1=35, must be odd
+                                    "crop_size": 21# 17, 2*s.ROWS+1=35, must be odd
                                 }
             }}
     },
@@ -177,13 +177,12 @@ while True:
                          bc_train_kwargs=configs["dagger_trainer"]["bc_train_kwargs"],
                          )  # 6600 for 5 mins
 
-    # try:
-    #     # dagger_trainer.save_trainer()
-    #     #  The created snapshot can be reloaded with `reconstruct_trainer()`.
-    #     tu.save_DAgger_trainer(dagger_trainer,configs)
-    # except Exception as e:
-    #     print("Error saving trainer:", e)
-    #     continue
+    try:
+        # Save the trainer
+        tu.save_DAgger_trainer(dagger_trainer, configs)
+    except Exception as e:
+        print("Error saving trainer:", e)
+        continue
 
     # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
     #     pickle.dump(dagger_trainer_copy, file)
