@@ -142,10 +142,10 @@ class CustomCNN(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor) -> th.Tensor:
         obs1, obs2 = observations[:,0], observations[:, 1]
         
-        crop_diam = int((self.crop_size - 1) / 2)
-        # crop obs to crop_size x crop_size
-        obs1 = obs1[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
-        obs2 = obs2[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+        # crop_diam = int((self.crop_size - 1) / 2)
+        # # crop obs to crop_size x crop_size
+        # obs1 = obs1[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+        # obs2 = obs2[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
         
         # Reshape and standardize the input to [0,1]
         obs1 = obs1.reshape(-1, 1, self.crop_size, self.crop_size) / 8

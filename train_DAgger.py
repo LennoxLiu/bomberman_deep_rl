@@ -19,6 +19,7 @@ from test_win_rate import test_against_RuleBasedAgent
 from stable_baselines3.common.policies import ActorCriticPolicy
 import torch.nn as nn
 import train_utils as tu
+import settings as s
 
 my_device = device("cuda" if is_available() else "cpu")
 print("Using device:", my_device)
@@ -77,14 +78,16 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[256, 128, 64, 32], vf=[256, 256, 128, 128, 64, 32]),
+            "net_arch": dict(pi=[512, 256, 128, 64, 32], vf=[512, 512, 256, 256, 128, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2],
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2],
-                                    "dense": [256], "crop_size": 17}
+                "network_configs": {"cnn1": [64, 128, 256], "cnn1_strides": [1, 1, 2],
+                                    "cnn2": [64, 128, 256], "cnn2_strides": [1, 1, 2],
+                                    "dense": [512, 512],
+                                    "crop_size": 2*s.ROWS+1
+                                    }
             }}
     },
     "dagger_trainer": {
@@ -104,7 +107,7 @@ configs = {
         "increase_beta": 0.05,  # The amount that beta increases by each round.
         # The range of reward that is considered as still in recent 5 rounds.
         "reward_increase_range": 0.25, # decrease beta if mean reward incresed less than that
-        "reward_decrease_range": 0.1, # increase beta if mean reward decreased more than that
+        "reward_decrease_range": 0.05, # increase beta if mean reward decreased more than that
         "mean_range": 3,  # The number of rounds to calculate the mean reward. 8 is steps per round
     },
     "SEED": 42
@@ -210,7 +213,7 @@ while True:
         # mean reward of last rounds
         new_mean = np.mean(mean_reward_list[-mean_range:])
         # mean reward of all previous rounds
-        old_mean = np.mean(mean_reward_list[:-mean_range])
+        old_mean = np.mean(mean_reward_list[-2*mean_range:-mean_range])
         print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of all previous rounds: {old_mean:.2f}")
         reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
         reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
