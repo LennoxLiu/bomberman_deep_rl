@@ -78,16 +78,14 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[256, 128, 64, 32], vf=[256, 256, 128, 128, 64, 32]),
+            "net_arch": dict(pi=[512, 256, 128, 64], vf=[512, 512, 256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
-            # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
-            "maxpool": "at the end of each cnn netwrok",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2],
-                                    "cnn2": [32, 64], "cnn2_strides": [1, 2],
-                                    "dense": [128, 256],
-                                    "crop_size": 2*s.ROWS+1
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 1024,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
+                                    "dense": [1024],
+                                    "crop_size": 27# 17, 2*s.ROWS+1=35, must be odd
                                 }
             }}
     },
@@ -107,7 +105,7 @@ configs = {
         "decrease_beta": 0.05,  # The amount that beta decreases by each round.
         "increase_beta": 0.05,  # The amount that beta increases by each round.
         # The range of reward that is considered as still in recent 5 rounds.
-        "reward_increase_range": 0.25, # decrease beta if mean reward incresed less than that
+        "reward_increase_range": 0.15, # decrease beta if mean reward incresed less than that
         "reward_decrease_range": 0.05, # increase beta if mean reward decreased more than that
         "mean_range": 3,  # The number of rounds to calculate the mean reward. 8 is steps per round
     },
@@ -215,7 +213,7 @@ while True:
         new_mean = np.mean(mean_reward_list[-mean_range:])
         # mean reward of all previous rounds
         old_mean = np.mean(mean_reward_list[-2*mean_range:-mean_range])
-        print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of all previous rounds: {old_mean:.2f}")
+        print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of previous {mean_range} rounds: {old_mean:.2f}")
         reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
         reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
         # if mean reward stop increasing, decrease beta
