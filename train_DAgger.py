@@ -83,7 +83,7 @@ configs = {
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64], "cnn2_strides": [1, 1], "dense2": 256,
+                                    "cnn2": [32, 64], "cnn2_strides": [1, 2], "dense2": 256,
                                     "dense": [512],
                                     "crop_size": 27# 17, 2*s.ROWS+1=35, must be odd
                                 }
