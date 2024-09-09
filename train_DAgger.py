@@ -78,16 +78,16 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[512, 256, 128, 64, 32], vf=[512, 512, 256, 256, 128, 128, 64, 32]),
+            "net_arch": dict(pi=[128, 64, 32], vf=[128, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [64, 128, 256], "cnn1_strides": [1, 1, 2],
-                                    "cnn2": [64, 128, 256], "cnn2_strides": [1, 1, 2],
-                                    "dense": [512, 512],
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 1],
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1],
+                                    "dense": [256, 256],
                                     "crop_size": 2*s.ROWS+1
-                                    }
+                                }
             }}
     },
     "dagger_trainer": {
@@ -96,7 +96,7 @@ configs = {
         # The number of environment timesteps that must be completed before a dataset aggregation step ends. Also, that any round will always train for at least self.batch_size timesteps, because otherwise BC could fail to receive any batches.
         "rollout_round_min_timesteps": 1024,
         "bc_train_kwargs": {
-            "n_epochs": 8,  # default: 4
+            "n_epochs": 4,  # default: 4
         },
         # The initial value of beta. The probability of using the expert policy instead of the learner policy.
         "beta0": 0.9,

@@ -5,4 +5,4 @@ If you want to use variable horizon for the environment, check this:
 https://imitation.readthedocs.io/en/latest/main-concepts/variable_horizon.html?highlight=allow_variable_horizon#limitations-on-horizon-length
 
 In tensorboard, the plots are only showed in SCALARS, not in TIME SERIES.
-Tensorboard highlight plots: .*(reward|loss|win|score|beta|l2).*
+Tensorboard highlight plots: ^(?!.*l2_loss).*(reward|loss|win|score|beta|norm).*

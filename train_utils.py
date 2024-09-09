@@ -105,6 +105,7 @@ class CustomCNN(BaseFeaturesExtractor):
         for i in range(1, len(cnn1_config)):
             self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=cnn1_strides[i], padding=1))
             self.cnn1.add_module('relu', nn.ReLU())
+        self.cnn1.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=2))
         self.cnn1.add_module('flatten', nn.Flatten())
 
         cnn2_config = network_configs['cnn2']
@@ -115,6 +116,8 @@ class CustomCNN(BaseFeaturesExtractor):
         for i in range(1, len(cnn2_config)):
             self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=cnn2_strides[i], padding=1))
             self.cnn2.add_module('relu', nn.ReLU())
+
+        self.cnn2.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=2))
         self.cnn2.add_module('flatten', nn.Flatten())
 
         with th.no_grad():
