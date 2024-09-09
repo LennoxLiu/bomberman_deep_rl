@@ -85,7 +85,7 @@ configs = {
                 "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
                                     "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
                                     "dense": [1024], #512
-                                    "crop_size": 23# 21, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                                    "crop_size": 21# 21, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
