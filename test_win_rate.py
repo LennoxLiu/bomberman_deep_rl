@@ -64,9 +64,9 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
 if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
 
-    agent=pickle.load(open('checkpoints/policy-checkpoint00010.pkl','rb'))
+    agent=pickle.load(open('checkpoints/policy-checkpoint00046.pkl','rb'))
 
-    print("Win rate:", test_against_RuleBasedAgent(0,agent,100, rule_based_agent=False,verbose=False))
+    print("Win rate:", test_against_RuleBasedAgent(0,agent,100, rule_based_agent=False,verbose=True))
     
     # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
     exit(0)

@@ -78,14 +78,14 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[256, 128, 64, 32], vf=[512, 256, 128, 64, 32]),
+            "net_arch": dict(pi=[512, 256, 128, 64], vf=[1024, 512, 256, 128, 64]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
                                     "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
-                                    "dense": [512],
-                                    "crop_size": 21# 17, 2*s.ROWS+1=35, must be odd
+                                    "dense": [1024], #512
+                                    "crop_size": 23# 21, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
