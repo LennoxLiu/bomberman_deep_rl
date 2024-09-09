@@ -81,6 +81,7 @@ configs = {
             "net_arch": dict(pi=[128, 64, 32], vf=[128, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             # nn.ReLU nn.LeakyReLU(slope), default: "th.nn.Tanh"
+            "maxpool": "at the end of each cnn netwrok",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
                 "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 1],
