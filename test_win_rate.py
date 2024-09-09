@@ -15,7 +15,8 @@ from imitation.data.wrappers import RolloutInfoWrapper
 
 def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = False, verbose=False):
     user_agent = agent
-    env = gym.make('CustomEnv-v1')
+    # don't end the game early
+    env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1","--continue-without-training"]})
     start_time = time.time()
     win_count = 0
     total_score = 0
@@ -64,7 +65,7 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
 if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
 
-    agent=pickle.load(open('checkpoints/policy-checkpoint00046.pkl','rb'))
+    agent=pickle.load(open('checkpoints/policy-checkpoint00054.pkl','rb'))
 
     print("Win rate:", test_against_RuleBasedAgent(0,agent,100, rule_based_agent=False,verbose=True))
     
