@@ -82,8 +82,8 @@ configs = {
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {
-                                    "cnn": [32, 64, 128], "cnn_strides": [1, 1, 2],
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
                                     "dense": [1024], #512
                                     "crop_size": 21# 21, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
@@ -107,7 +107,7 @@ configs = {
         # The range of reward that is considered as still in recent 5 rounds.
         "reward_increase_range": 0.15, # decrease beta if mean reward incresed less than that
         "reward_decrease_range": 0.05, # increase beta if mean reward decreased more than that
-        "mean_range": 8,  # The number of rounds to calculate the mean reward. 8 is steps per round
+        "mean_range": 3,  # The number of rounds to calculate the mean reward. 8 is steps per round
     },
     "SEED": 42
 }

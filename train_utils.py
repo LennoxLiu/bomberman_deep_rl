@@ -94,49 +94,80 @@ class CustomCNN(BaseFeaturesExtractor):
     def __init__(self, observation_space: spaces.Box, network_configs: dict):
         super().__init__(observation_space, features_dim=network_configs['dense'][-1])
         # We assume 2x1xROWxCOL image (1 channel)
-        n_input_channels = 2
+        n_input_channels = 1
         self.crop_size = network_configs['crop_size']
+
+        cnn1_config = network_configs['cnn1']
+        cnn1_strides = network_configs['cnn1_strides']
+        self.cnn1 = nn.Sequential()
+        self.cnn1.add_module('conv0', nn.Conv2d(n_input_channels, cnn1_config[0], kernel_size=2, stride=cnn1_strides[0], padding=0))
+        self.cnn1.add_module('relu', nn.ReLU())
+        for i in range(1, len(cnn1_config)):
+            self.cnn1.add_module('conv'+str(i), nn.Conv2d(cnn1_config[i-1], cnn1_config[i], kernel_size=3, stride=cnn1_strides[i], padding=0))
+            self.cnn1.add_module('relu', nn.ReLU())
         
-        cnn_config = network_configs['cnn']
-        cnn_strides = network_configs['cnn_strides']
-        self.cnn = nn.Sequential()
-        self.cnn.add_module('conv0', nn.Conv2d(n_input_channels, cnn_config[0], kernel_size=2, stride=cnn_strides[0], padding=0))
-        self.cnn.add_module('relu', nn.ReLU())
-        for i in range(1, len(cnn_config)):
-            self.cnn.add_module('conv'+str(i), nn.Conv2d(cnn_config[i-1], cnn_config[i], kernel_size=3, stride=cnn_strides[i], padding=0))
-            self.cnn.add_module('relu', nn.ReLU())
+        # self.cnn1.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=1))
+        self.cnn1.add_module('flatten', nn.Flatten())
+
+        cnn2_config = network_configs['cnn2']
+        cnn2_strides = network_configs['cnn2_strides']
+        self.cnn2 = nn.Sequential()
+        self.cnn2.add_module('conv0', nn.Conv2d(n_input_channels, cnn2_config[0], kernel_size=2, stride=cnn2_strides[0], padding=0))
+        self.cnn2.add_module('relu', nn.ReLU())
+        for i in range(1, len(cnn2_config)):
+            self.cnn2.add_module('conv'+str(i), nn.Conv2d(cnn2_config[i-1], cnn2_config[i], kernel_size=3, stride=cnn2_strides[i], padding=0))
+            self.cnn2.add_module('relu', nn.ReLU())
         
-        self.cnn.add_module('flatten', nn.Flatten())
+        # self.cnn2.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=1))
+        self.cnn2.add_module('flatten', nn.Flatten())
 
         with th.no_grad():
-            crop_diam = int((self.crop_size - 1) / 2)
+            # Reshape inputs for passing through the CNNs
+            obs1_sample = th.as_tensor(observation_space.sample()[0]).float()
+            obs2_sample = th.as_tensor(observation_space.sample()[1]).float()
 
-            obs_sample = th.as_tensor(observation_space.sample()).float()
-            obs_sample = obs_sample[s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+            crop_diam = int((self.crop_size - 1) / 2)
+            obs1_sample = obs1_sample[s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+            obs2_sample = obs2_sample[s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
             
             # Pass through CNNs and calculate flatten sizes
-            n_flatten = self.cnn(obs_sample.reshape(-1, 2, self.crop_size, self.crop_size)).shape[1]
-            print(f"n_flatten: {n_flatten}")
+            n_flatten1 = self.cnn1(obs1_sample.reshape(-1, 1, self.crop_size, self.crop_size)).shape[1]
+            n_flatten2 = self.cnn2(obs2_sample.reshape(-1, 1, self.crop_size, self.crop_size)).shape[1]
+
+            print(f"n_flatten1: {n_flatten1}, n_flatten2: {n_flatten2}")
+        
+        
+        self.dense1 = nn.Sequential()
+        self.dense1.add_module('linear0', nn.Linear(n_flatten1, network_configs['dense1']))
+        self.dense1.add_module('relu', nn.ReLU())
+
+        self.dense2 = nn.Sequential()
+        self.dense2.add_module('linear0', nn.Linear(n_flatten2, network_configs['dense2']))
+        self.dense2.add_module('relu', nn.ReLU())
+
 
         linear_config = network_configs['dense']
         self.dense = nn.Sequential()
-        self.dense.add_module('linear0', nn.Linear(n_flatten, linear_config[0]))
+        self.dense.add_module('linear0', nn.Linear(network_configs['dense1']+network_configs['dense2'], linear_config[0]))
         self.dense.add_module('relu', nn.ReLU())
         for i in range(1, len(linear_config)):
             self.dense.add_module('linear'+str(i), nn.Linear(linear_config[i-1], linear_config[i]))
             self.dense.add_module('relu', nn.ReLU())
     
 
-    # observations: (2, 2*ROW+1, 2*COL+1)
     def forward(self, observations: th.Tensor) -> th.Tensor:
+        obs1, obs2 = observations[:,0], observations[:, 1]
+        
         crop_diam = int((self.crop_size - 1) / 2)
+        # crop obs to crop_size x crop_size
+        obs1 = obs1[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+        obs2 = obs2[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
         
-        obs1 = observations[:, 0, s.ROWS-crop_diam:s.ROWS+crop_diam+1, s.COLS-crop_diam:s.COLS+crop_diam+1].reshape(-1, 1, self.crop_size, self.crop_size) / 8
-        obs2 = observations[:, 1, s.ROWS-crop_diam:s.ROWS+crop_diam+1, s.COLS-crop_diam:s.COLS+crop_diam+1].reshape(-1, 1, self.crop_size, self.crop_size) / (s.EXPLOSION_TIMER * 2) + s.BOMB_TIMER + 4
+        # Reshape and standardize the input to [0,1]
+        obs1 = obs1.reshape(-1, 1, self.crop_size, self.crop_size) / 8
+        obs2 = obs2.reshape(-1, 1, self.crop_size, self.crop_size) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
 
-        observations = th.cat([obs1, obs2], dim=1)
-        
-        return self.dense(self.cnn(observations))
+        return self.dense(th.cat([self.dense1(self.cnn1(obs1)), self.dense2(self.cnn2(obs2))], dim=1))
 
 
 def save_DAgger_trainer(trainer,configs):
