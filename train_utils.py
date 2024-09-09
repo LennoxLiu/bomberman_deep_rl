@@ -109,10 +109,6 @@ class CustomCNN(BaseFeaturesExtractor):
         # self.cnn1.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=1))
         self.cnn1.add_module('flatten', nn.Flatten())
 
-        self.dense1 = nn.Sequential()
-        self.dense1.add_module('linear0', nn.Linear(self.cnn1[-1].out_features, network_configs['dense1']))
-        self.dense1.add_module('relu', nn.ReLU())
-
         cnn2_config = network_configs['cnn2']
         cnn2_strides = network_configs['cnn2_strides']
         self.cnn2 = nn.Sequential()
@@ -124,10 +120,6 @@ class CustomCNN(BaseFeaturesExtractor):
         
         # self.cnn2.add_module('maxpool', nn.MaxPool2d(kernel_size=2, stride=1))
         self.cnn2.add_module('flatten', nn.Flatten())
-        
-        self.dense2 = nn.Sequential()
-        self.dense2.add_module('linear0', nn.Linear(2*self.cnn2[-1].out_features, network_configs['dense2']))
-        self.dense2.add_module('relu', nn.ReLU())
 
         with th.no_grad():
             # Reshape inputs for passing through the CNNs
@@ -144,6 +136,16 @@ class CustomCNN(BaseFeaturesExtractor):
 
             print(f"n_flatten1: {n_flatten1}, n_flatten2: {n_flatten2}")
         
+        
+        self.dense1 = nn.Sequential()
+        self.dense1.add_module('linear0', nn.Linear(n_flatten1, network_configs['dense1']))
+        self.dense1.add_module('relu', nn.ReLU())
+
+        self.dense2 = nn.Sequential()
+        self.dense2.add_module('linear0', nn.Linear(n_flatten2, network_configs['dense2']))
+        self.dense2.add_module('relu', nn.ReLU())
+
+
         linear_config = network_configs['dense']
         self.dense = nn.Sequential()
         self.dense.add_module('linear0', nn.Linear(network_configs['dense1']+network_configs['dense2'], linear_config[0]))
