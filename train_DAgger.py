@@ -54,7 +54,7 @@ rng = np.random.default_rng(SEED)
 env = make_vec_env(
     'CustomEnv_randomMix-v0', # train against differnt agents
     rng=np.random.default_rng(SEED),
-    n_envs=8,
+    n_envs=16,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
@@ -62,7 +62,7 @@ env = make_vec_env(
 env_test = make_vec_env(
     'CustomEnv_randomMix-v0',
     rng=np.random.default_rng(SEED),
-    n_envs=8,
+    n_envs=16,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
@@ -189,8 +189,7 @@ while True:
 
     win_rate, score_per_round = test_against_RuleBasedAgent(
         0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=50, verbose=False)
-    print(
-        f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
+    print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
     score_per_rounds.append(score_per_round)
     custom_logger.record("a/win_rate", win_rate)

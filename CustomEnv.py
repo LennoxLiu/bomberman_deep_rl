@@ -394,7 +394,7 @@ class CustonEnv_randomMix(CustomEnv):
                 argv_list.append("random_agent")
         argv_list.append("--train")
         argv_list.append("1")
-
+        print("argv_list:",argv_list)
         super().__init__(options = {"argv": argv_list})
 
 
