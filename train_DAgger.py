@@ -78,14 +78,14 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[512, 256, 128, 64], vf=[1024, 512, 256, 128, 64]),
+            "net_arch": dict(pi=[1024, 512, 256, 128, 64], vf=[2048, 1024, 512, 256, 128, 64]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
-                                    "dense": [1024], #512
-                                    "crop_size": 21# 21, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 1024,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 1024,
+                                    "dense": [2048], #512
+                                    "crop_size": 21 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
@@ -180,14 +180,12 @@ while True:
     try:
         # Save the trainer
         tu.save_DAgger_trainer(dagger_trainer, configs)
+    
+        with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
+            pickle.dump(dagger_trainer.policy, file)
     except Exception as e:
         print("Error saving trainer:", e)
         continue
-
-    # with open(f"checkpoints/dagger_trainer-checkpoint{round_id:05d}.pkl", "wb") as file:
-    #     pickle.dump(dagger_trainer_copy, file)
-    with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
-        pickle.dump(dagger_trainer.policy, file)
 
     win_rate, score_per_round = test_against_RuleBasedAgent(
         0, dagger_trainer.policy, rounds=50, verbose=False)

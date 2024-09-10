@@ -65,10 +65,16 @@ def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = Fa
 if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
 
-    agent=pickle.load(open('checkpoints/policy-checkpoint00054.pkl','rb'))
+    reports = []
+    for i in tqdm([36]):
+        agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
+        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,100,False,False)
+        reports.append((i,win_rate,score_per_round))
+        print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 
-    print("Win rate:", test_against_RuleBasedAgent(0,agent,100, rule_based_agent=False,verbose=True))
-    
+    reports = np.array(reports)
+    print(np.argsort(reports[:, 2]))
+    print(reports)
     # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
     exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
@@ -78,7 +84,7 @@ if __name__ == '__main__':
     with Pool(num_processes) as pool:
         results = []
         for i in range(turns):
-            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,RuleBasedAgent(has_memory=False),20,True,True))
+            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,agent,10,False,True))
             results.append(result)
 
         # while len(results) > 0 and any([not result.ready() for result in results]):
