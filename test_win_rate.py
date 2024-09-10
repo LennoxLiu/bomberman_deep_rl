@@ -13,14 +13,14 @@ from imitation.util.util import make_vec_env
 from imitation.data.wrappers import RolloutInfoWrapper
 
 
-def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = False, verbose=False):
+def test_against_RuleBasedAgent(turn_id, agent, env_id = 'CustomEnv_random-v0', rounds=10, rule_based_agent = False, verbose=False):
     user_agent = agent
     # don't end the game early
     # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1","--continue-without-training"]})
     # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","coin_collector_agent","coin_collector_agent","--train","1","--continue-without-training"]})
     # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent","random_agent","random_agent","random_agent","--train","1","--continue-without-training"]})
-    env = gym.make('CustomEnv_random-v0')
-    
+    env = gym.make(env_id)
+
     start_time = time.time()
     win_count = 0
     total_score = 0

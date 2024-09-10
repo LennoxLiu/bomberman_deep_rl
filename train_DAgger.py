@@ -188,7 +188,7 @@ while True:
         continue
 
     win_rate, score_per_round = test_against_RuleBasedAgent(
-        0, dagger_trainer.policy, rounds=50, verbose=False)
+        0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=50, verbose=False)
     print(
         f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
