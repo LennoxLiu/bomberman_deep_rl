@@ -82,8 +82,8 @@ configs = {
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64], "cnn1_strides": [1, 1], "dense1": 512,
-                                    "cnn2": [32, 64], "cnn2_strides": [1, 1], "dense2": 512,
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
                                     "dense": [1024], #512
                                     "crop_size": 17 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
