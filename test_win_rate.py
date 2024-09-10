@@ -16,7 +16,11 @@ from imitation.data.wrappers import RolloutInfoWrapper
 def test_against_RuleBasedAgent(turn_id, agent, rounds=10, rule_based_agent = False, verbose=False):
     user_agent = agent
     # don't end the game early
-    env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1","--continue-without-training"]})
+    # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1","--continue-without-training"]})
+    # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","coin_collector_agent","coin_collector_agent","--train","1","--continue-without-training"]})
+    # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--agents","user_agent","random_agent","random_agent","random_agent","--train","1","--continue-without-training"]})
+    env = gym.make('CustomEnv_random-v0')
+    
     start_time = time.time()
     win_count = 0
     total_score = 0
@@ -68,7 +72,7 @@ if __name__ == '__main__':
     reports = []
     for i in tqdm([36]):
         agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
-        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,100,False,False)
+        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,100,False,True)
         reports.append((i,win_rate,score_per_round))
         print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 

@@ -186,8 +186,11 @@ def save_DAgger_trainer(trainer,configs):
         # trainer.scratch_dir / f"checkpoint-{trainer.round_num:03d}.pt",
         trainer.scratch_dir / "checkpoint-latest.pt",
     ]
-    for checkpoint_path in checkpoint_paths:
-        th.save(trainer_dict, checkpoint_path, pickle_protocol=5)
+    try:
+        for checkpoint_path in checkpoint_paths:
+            th.save(trainer_dict, checkpoint_path, pickle_protocol=5)
+    except Exception as e:
+        print(f"Failed to save trainer to {checkpoint_path}: {e}")
 
 
 def load_DAgger_trainer(checkpoint_path):

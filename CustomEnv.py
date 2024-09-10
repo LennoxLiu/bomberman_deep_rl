@@ -365,6 +365,39 @@ class CustomEnv(gym.Env):
         return user_agent_score > max(other_scores), other_scores, user_agent_score, agent_events # return True if user_agent wins
 
 
+
+class CustomEnv_coin_collector(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","coin_collector_agent","coin_collector_agent","--train","1"]})
+
+
+class CustomEnv_random(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","random_agent","random_agent","random_agent","--train","1"]})
+
+
+class CustomEnv_mix(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","random_agent","rule_based_agent","--train","1"]})
+
+
+class CustonEnv_randomMix(CustomEnv):
+    def __init__(self):
+        argv_list = ["play","--no-gui","--agents","user_agent"]
+        num_agents = np.random.randint(1,4)
+        for _ in range(num_agents):
+            if random() < 0.34:
+                argv_list.append("rule_based_agent")
+            elif random() < 0.5:
+                argv_list.append("coin_collector_agent")
+            else:
+                argv_list.append("random_agent")
+        argv_list.append("--train")
+        argv_list.append("1")
+
+        super().__init__(options = {"argv": argv_list})
+
+
 from gymnasium import register
 import os
 
@@ -373,7 +406,24 @@ register(
     entry_point='CustomEnv:CustomEnv',  # Replace with the actual path to your CustomEnv class
 )
 
+register(
+    id='CustomEnv_coin_collector-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_coin_collector',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_random-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_random',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_mix-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_mix',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_randomMix-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustonEnv_randomMix',  # Replace with the actual path to your CustomEnv class
+)
 # tmp_env = gym.make('CustomEnv-v1')
+
 
 if __name__ == "__main__":
     env = CustomEnv()

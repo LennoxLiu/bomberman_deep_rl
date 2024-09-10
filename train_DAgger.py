@@ -52,7 +52,7 @@ def callback(round_num: int, /) -> None:
 SEED = 42
 rng = np.random.default_rng(SEED)
 env = make_vec_env(
-    'CustomEnv-v1',
+    'CustomEnv_randomMix-v0', # train against differnt agents
     rng=np.random.default_rng(SEED),
     n_envs=8,
     # to compute rollouts
@@ -60,7 +60,7 @@ env = make_vec_env(
     log_dir='logs',
 )
 env_test = make_vec_env(
-    'CustomEnv-v1',
+    'CustomEnv_randomMix-v0',
     rng=np.random.default_rng(SEED),
     n_envs=8,
     # to compute rollouts
@@ -78,14 +78,14 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[1024, 512, 256, 128, 64], vf=[2048, 1024, 512, 256, 128, 64]),
+            "net_arch": dict(pi=[512, 512, 256, 128, 64], vf=[1024, 512, 256, 128, 64]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 1024,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 1024,
-                                    "dense": [2048], #512
-                                    "crop_size": 21 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                "network_configs": {"cnn1": [32, 64], "cnn1_strides": [1, 1], "dense1": 512,
+                                    "cnn2": [32, 64], "cnn2_strides": [1, 1], "dense2": 512,
+                                    "dense": [1024], #512
+                                    "crop_size": 17 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
