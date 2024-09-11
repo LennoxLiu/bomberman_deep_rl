@@ -52,21 +52,23 @@ def callback(round_num: int, /) -> None:
 SEED = 42
 rng = np.random.default_rng(SEED)
 env = make_vec_env(
-    'CustomEnv_randomMix-v0', # train against differnt agents
+    'CustomEnv_random-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
     n_envs=16,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
 )
-env_test = make_vec_env(
-    'CustomEnv_randomMix-v0',
-    rng=np.random.default_rng(SEED),
-    n_envs=16,
-    # to compute rollouts
-    post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
-    log_dir='logs',
-)
+# env_test = make_vec_env(
+#     'CustomEnv_randomMix-v0',
+#     rng=np.random.default_rng(SEED),
+#     n_envs=16,
+#     # to compute rollouts
+#     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
+#     log_dir='logs',
+# )
+env_test = env
+
 expert = RuleBasedPolicy(env.observation_space, env.action_space)
 
 configs = {
@@ -78,14 +80,14 @@ configs = {
         "l2_weight": 1e-8,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[512, 512, 256, 128, 64], vf=[1024, 512, 256, 128, 64]),
+            "net_arch": dict(pi=[1024, 512, 256, 128, 64], vf=[1024, 512, 256, 128, 64]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU",
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 512,
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 1], "dense1": 1024,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1], "dense2": 1024,
                                     "dense": [1024], #512
-                                    "crop_size": 17 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                                    "crop_size": 21 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
@@ -150,9 +152,12 @@ dagger_trainer = SimpleDAggerTrainer(
     bc_trainer=bc_trainer,
     rng=rng,
     custom_logger=custom_logger,
-    beta_schedule=tu.CustomBetaSchedule2(custom_logger, decrease_beta=configs["dagger_trainer"]["decrease_beta"],
-                                         increase_beta=configs["dagger_trainer"]["increase_beta"],
-                                         beta0=configs["dagger_trainer"]["beta0"], beta_final=configs["dagger_trainer"]["beta_final"]),
+    beta_schedule=tu.CustomBetaSchedule(
+        custom_logger, decrease_beta=configs["dagger_trainer"]["decrease_beta"],
+        beta0=configs["dagger_trainer"]["beta0"], beta_final=configs["dagger_trainer"]["beta_final"]),
+    # beta_schedule=tu.CustomBetaSchedule2(custom_logger, decrease_beta=configs["dagger_trainer"]["decrease_beta"],
+    #                                      increase_beta=configs["dagger_trainer"]["increase_beta"],
+    #                                      beta0=configs["dagger_trainer"]["beta0"], beta_final=configs["dagger_trainer"]["beta_final"]),
 )
 
 
@@ -202,25 +207,25 @@ while True:
     custom_logger.dump(step=round_id)
     print(f"Round {round_id} Learner reward: {learner_reward:.2f}")
 
-    mean_reward_list = tu.load_tensorboard_log("dagger/mean_episode_reward")
-    mean_range = configs["dagger_trainer"]["mean_range"]
-    if len(mean_reward_list) >= 2* mean_range:
-        # mean reward of last rounds
-        new_mean = np.mean(mean_reward_list[-mean_range:])
-        # mean reward of all previous rounds
-        old_mean = np.mean(mean_reward_list[-2*mean_range:-mean_range])
-        print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of previous {mean_range} rounds: {old_mean:.2f}")
-        reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
-        reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
-        # if mean reward stop increasing, decrease beta
-        if old_mean*(1-reward_decrease_range) < new_mean and new_mean < old_mean*(1+reward_increase_range):
-            dagger_trainer.beta_schedule.decrease()
+    # mean_reward_list = tu.load_tensorboard_log("dagger/mean_episode_reward")
+    # mean_range = configs["dagger_trainer"]["mean_range"]
+    # if len(mean_reward_list) >= 2* mean_range:
+    #     # mean reward of last rounds
+    #     new_mean = np.mean(mean_reward_list[-mean_range:])
+    #     # mean reward of all previous rounds
+    #     old_mean = np.mean(mean_reward_list[-2*mean_range:-mean_range])
+    #     print(f"Mean reward of last {mean_range} rounds: {new_mean:.2f}, of previous {mean_range} rounds: {old_mean:.2f}")
+    #     reward_increase_range = configs["dagger_trainer"]["reward_increase_range"]
+    #     reward_decrease_range = configs["dagger_trainer"]["reward_decrease_range"]
+    #     # if mean reward stop increasing, decrease beta
+    #     if old_mean*(1-reward_decrease_range) < new_mean and new_mean < old_mean*(1+reward_increase_range):
+    #         dagger_trainer.beta_schedule.decrease()
 
-        # if mean reward decrease, increase beta
-        if new_mean <= old_mean*(1-reward_decrease_range):
-            dagger_trainer.beta_schedule.increase()
+    #     # if mean reward decrease, increase beta
+    #     if new_mean <= old_mean*(1-reward_decrease_range):
+    #         dagger_trainer.beta_schedule.increase()
 
-        # if mean reward is still increasing, keep the beta
+    #     # if mean reward is still increasing, keep the beta
 
     round_id += 1
 

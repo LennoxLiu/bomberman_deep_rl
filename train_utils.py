@@ -41,16 +41,16 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
 # beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
 class CustomBetaSchedule(BetaSchedule):
-    def __init__(self, logger, delta_beta = 0.005 ,beta0 = 1, beta_final: float = 0.05):
+    def __init__(self, logger, decrease_beta = 0.005 ,beta0 = 1, beta_final: float = 0.05):
         self.beta_final = beta_final
         self.logger = logger
-        self.delta_beta = delta_beta
+        self.decrease_beta = decrease_beta
 
         self.beta = beta0
 
     def  __call__(self, round_num: int) -> float:
-        if round_num % 5 == 0:
-            self.beta -= self.delta_beta # 0.0001 too small, 0.01 too large
+        if round_num % 3 == 0:
+            self.beta -= self.decrease_beta # 0.0001 too small, 0.01 too large
             self.beta = max(self.beta, self.beta_final)
 
         self.logger.record("dagger/beta", self.beta)

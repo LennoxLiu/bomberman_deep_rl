@@ -386,15 +386,16 @@ class CustonEnv_randomMix(CustomEnv):
         argv_list = ["play","--no-gui","--agents","user_agent"]
         num_agents = np.random.randint(1,4)
         for _ in range(num_agents):
-            if random() < 0.34:
+            if random() < 0.6:
                 argv_list.append("rule_based_agent")
-            elif random() < 0.5:
+            elif random() < 0.6:
                 argv_list.append("coin_collector_agent")
             else:
                 argv_list.append("random_agent")
+
         argv_list.append("--train")
         argv_list.append("1")
-        print("argv_list:",argv_list)
+        print("argv_list:",argv_list[4:-2])
         super().__init__(options = {"argv": argv_list})
 
 
