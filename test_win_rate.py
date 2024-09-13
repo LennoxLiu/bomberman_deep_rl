@@ -70,9 +70,9 @@ if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
 
     reports = []
-    for i in tqdm(range(49,30,-1)):
+    for i in tqdm(range(1,36)):
         agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
-        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,'CustomEnv_random-v0',100,False,True)
+        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,'CustomEnv_random-v0',100,False,False)
         reports.append((i,win_rate,score_per_round))
         print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 
