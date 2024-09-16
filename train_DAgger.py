@@ -54,7 +54,7 @@ rng = np.random.default_rng(SEED)
 env = make_vec_env(
     'CustomEnv_random-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
-    n_envs=16,
+    n_envs=8,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
@@ -80,14 +80,14 @@ configs = {
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[512, 256, 128, 64], vf=[512, 512, 256, 128, 64]),
+            "net_arch": dict(pi=[256, 128, 64, 32], vf=[512, 256, 128, 64]),
             "features_extractor_class": "CustomCNN",
-            "activation_fn": "nn.LeakyReLU",
+            "activation_fn": "nn.ReLU", # "nn.ReLU", "nn.LeakyReLU"
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 1024,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 2], "dense2": 1024,
-                                    "dense": [1024], #512
-                                    "crop_size": 21 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 1], "dense1": 512,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1], "dense2": 512,
+                                    "dense": [512], #512
+                                    "crop_size": 11 # 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                 }
             }}
     },
@@ -129,7 +129,7 @@ bc_trainer = bc.BC(
         env.action_space,
         tu.linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
-        activation_fn=nn.LeakyReLU,
+        activation_fn=nn.ReLU,
         features_extractor_class=tu.CustomCNN,
         features_extractor_kwargs=configs['bc_trainer']['policy']["features_extractor_kwargs"],
     ),
