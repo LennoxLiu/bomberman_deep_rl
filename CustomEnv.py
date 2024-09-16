@@ -37,6 +37,10 @@ def fromStateToObservation(game_state):
         # 0: nothing
         # 1~s.EXPLOSION_TIMER: explosion map
         explosion_field = game_state["explosion_map"].astype(np.int8)
+        
+        # -2: wall
+        explosion_field[field == 0] = -2
+        
         # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
             explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER + 1 # overlay bomb on explosion
@@ -61,6 +65,7 @@ def fromStateToObservation(game_state):
         pad_bottom = agent_x + 1
 
         # Apply padding to both cropped matrices
+        # pad -1 to the outside of the field
         padded_field = np.pad(field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
         padded_explosion_field = np.pad(explosion_field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
 
@@ -69,7 +74,7 @@ def fromStateToObservation(game_state):
         
         # Check that the observation fits within the expected size
         assert observation.shape == (2,s.ROWS*2 + 1,s.COLS*2 + 1)
-        assert spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
+        assert spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
         
         return observation
 
@@ -97,11 +102,11 @@ def fromObservationToState(observation):
     center_x, center_y = s.ROWS, s.COLS
 
     for row_id in range(0,center_x):
-        if explosion_field[row_id][center_y] == 0 and field[row_id-1][center_y] == -1:
+        if (explosion_field[row_id][center_y] == 0 or explosion_field[row_id][center_y] == -2) and field[row_id-1][center_y] == -1:
             agent_x = center_x - row_id
             break
     for col_id in range(0,center_y):
-        if explosion_field[center_x][col_id] == 0 and field[center_x][col_id-1] == -1:
+        if (explosion_field[center_x][col_id] == 0 or explosion_field[center_x][col_id] == -2) and field[center_x][col_id-1] == -1:
             agent_y = center_y - col_id
             break
 
@@ -174,7 +179,7 @@ class CustomEnv(gym.Env):
         # They must be gym.spaces objects
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
-        self.observation_space = spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
+        self.observation_space = spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
             # observation space consists of two parts
             # first part is the field without bomb
             # -1: outside of game field
