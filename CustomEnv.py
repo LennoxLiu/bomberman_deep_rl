@@ -214,6 +214,7 @@ class CustomEnv(gym.Env):
         # store my agent
         self.my_agent = None
         self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
+        self.my_pos_queue = [] # store the last 3 positions of my agent
         for a in self.world.agents:
             if a.name == "user_agent":
                 self.my_agent = a
@@ -256,7 +257,15 @@ class CustomEnv(gym.Env):
         observation = fromStateToObservation(game_state)
         
         current_pos = game_state["self"][3]
-        
+
+        back_and_forth_reward = 0
+        if len(self.my_pos_queue) == 3:
+            if current_pos in self.my_pos_queue:
+                back_and_forth_reward -= 0.01 # punish the agent for going back and forth
+        self.my_pos_queue.append(current_pos)
+        if len(self.my_pos_queue) > 3:
+            self.my_pos_queue.pop(0)
+
         def in_bomb_range(bomb_x,bomb_y,x,y):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
@@ -297,7 +306,7 @@ class CustomEnv(gym.Env):
         
         # Get reward
         # self.my_agent.last_game_state, self.my_agent.last_action, game_state, self.events
-        reward = death_reward + escape_bomb_reward + closer_to_opponent_reward
+        reward = back_and_forth_reward + death_reward + escape_bomb_reward + closer_to_opponent_reward
         for event in self.my_agent.events:
             if event in [e.MOVED_LEFT, e.MOVED_RIGHT, e.MOVED_UP, e.MOVED_DOWN]:
                 reward += 0
