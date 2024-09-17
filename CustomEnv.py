@@ -260,7 +260,7 @@ class CustomEnv(gym.Env):
 
         back_and_forth_reward = 0
         if len(self.my_pos_queue) == 3:
-            if current_pos in self.my_pos_queue:
+            if current_pos == self.my_pos_queue[1]:
                 back_and_forth_reward -= 0.01 # punish the agent for going back and forth
         self.my_pos_queue.append(current_pos)
         if len(self.my_pos_queue) > 3:
