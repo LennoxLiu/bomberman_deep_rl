@@ -344,7 +344,7 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed) # following documentation
         
         self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
-        
+        self.my_pos_queue = []
         # start a new round
         self.world.new_round()
 
