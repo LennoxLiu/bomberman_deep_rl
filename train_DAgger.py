@@ -84,8 +84,8 @@ configs = {
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # "nn.ReLU", "nn.LeakyReLU"
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1], "dense2": 512,
+                "network_configs": {"cnn1": [32, 64], "cnn1_strides": [1, 2], "dense1": 512,
+                                    "cnn2": [32, 64], "cnn2_strides": [1, 1], "dense2": 512,
                                     "dense": [512], #512
                                     "crop_size_1": 19, # field map 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
                                     "crop_size_2": 11, # bomb map
