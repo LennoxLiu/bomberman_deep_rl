@@ -95,7 +95,8 @@ class CustomCNN(BaseFeaturesExtractor):
         super().__init__(observation_space, features_dim=network_configs['dense'][-1])
         # We assume 2x1xROWxCOL image (1 channel)
         n_input_channels = 1
-        self.crop_size = network_configs['crop_size']
+        self.crop_size_1 = network_configs['crop_size_1']
+        self.crop_size_2 = network_configs['crop_size_2']
 
         cnn1_config = network_configs['cnn1']
         cnn1_strides = network_configs['cnn1_strides']
@@ -126,13 +127,14 @@ class CustomCNN(BaseFeaturesExtractor):
             obs1_sample = th.as_tensor(observation_space.sample()[0]).float()
             obs2_sample = th.as_tensor(observation_space.sample()[1]).float()
 
-            crop_diam = int((self.crop_size - 1) / 2)
-            obs1_sample = obs1_sample[s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
-            obs2_sample = obs2_sample[s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+            crop_diam_1 = int((self.crop_size_1 - 1) / 2)
+            crop_diam_2 = int((self.crop_size_2 - 1) / 2)
+            obs1_sample = obs1_sample[s.ROWS-crop_diam_1:s.ROWS+crop_diam_1+1,s.COLS-crop_diam_1:s.COLS+crop_diam_1+1]
+            obs2_sample = obs2_sample[s.ROWS-crop_diam_2:s.ROWS+crop_diam_2+1,s.COLS-crop_diam_2:s.COLS+crop_diam_2+1]
             
             # Pass through CNNs and calculate flatten sizes
-            n_flatten1 = self.cnn1(obs1_sample.reshape(-1, 1, self.crop_size, self.crop_size)).shape[1]
-            n_flatten2 = self.cnn2(obs2_sample.reshape(-1, 1, self.crop_size, self.crop_size)).shape[1]
+            n_flatten1 = self.cnn1(obs1_sample.reshape(-1, 1, self.crop_size_1, self.crop_size_1)).shape[1]
+            n_flatten2 = self.cnn2(obs2_sample.reshape(-1, 1, self.crop_size_2, self.crop_size_2)).shape[1]
 
             print(f"n_flatten1: {n_flatten1}, n_flatten2: {n_flatten2}")
         
@@ -158,14 +160,16 @@ class CustomCNN(BaseFeaturesExtractor):
     def forward(self, observations: th.Tensor) -> th.Tensor:
         obs1, obs2 = observations[:,0], observations[:, 1]
         
-        crop_diam = int((self.crop_size - 1) / 2)
+        crop_diam_1 = int((self.crop_size_1 - 1) / 2)
+        crop_diam_2 = int((self.crop_size_2 - 1) / 2)
+            
         # crop obs to crop_size x crop_size
-        obs1 = obs1[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
-        obs2 = obs2[:,s.ROWS-crop_diam:s.ROWS+crop_diam+1,s.COLS-crop_diam:s.COLS+crop_diam+1]
+        obs1 = obs1[:,s.ROWS-crop_diam_1:s.ROWS+crop_diam_1+1,s.COLS-crop_diam_1:s.COLS+crop_diam_1+1]
+        obs2 = obs2[:,s.ROWS-crop_diam_2:s.ROWS+crop_diam_2+1,s.COLS-crop_diam_2:s.COLS+crop_diam_2+1]
         
         # Reshape and standardize the input to [0,1]
-        obs1 = obs1.reshape(-1, 1, self.crop_size, self.crop_size) / 8
-        obs2 = obs2.reshape(-1, 1, self.crop_size, self.crop_size) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+        obs1 = obs1.reshape(-1, 1, self.crop_size_1, self.crop_size_1) / 8
+        obs2 = obs2.reshape(-1, 1, self.crop_size_2, self.crop_size_2) / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
 
         return self.dense(th.cat([self.dense1(self.cnn1(obs1)), self.dense2(self.cnn2(obs2))], dim=1))
 

@@ -9,7 +9,7 @@ import train_utils as tu
 import torch
 
 def setup(self):
-    self.model = torch.load(open('policy-checkpoint00036.pkl','rb'), map_location=torch.device('cpu'))
+    self.model = torch.load(open('policy-checkpoint00011.pkl','rb'), map_location=torch.device('cpu'))
     print(self.model)
 
 

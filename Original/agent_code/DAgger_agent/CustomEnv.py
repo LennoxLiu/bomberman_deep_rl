@@ -37,6 +37,10 @@ def fromStateToObservation(game_state):
         # 0: nothing
         # 1~s.EXPLOSION_TIMER: explosion map
         explosion_field = game_state["explosion_map"].astype(np.int8)
+        
+        # -2: wall
+        explosion_field[field == 0] = -2
+        
         # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
             explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER + 1 # overlay bomb on explosion
@@ -61,6 +65,7 @@ def fromStateToObservation(game_state):
         pad_bottom = agent_x + 1
 
         # Apply padding to both cropped matrices
+        # pad -1 to the outside of the field
         padded_field = np.pad(field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
         padded_explosion_field = np.pad(explosion_field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
 
@@ -69,7 +74,7 @@ def fromStateToObservation(game_state):
         
         # Check that the observation fits within the expected size
         assert observation.shape == (2,s.ROWS*2 + 1,s.COLS*2 + 1)
-        assert spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
+        assert spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
         
         return observation
 
@@ -97,11 +102,11 @@ def fromObservationToState(observation):
     center_x, center_y = s.ROWS, s.COLS
 
     for row_id in range(0,center_x):
-        if explosion_field[row_id][center_y] == 0 and field[row_id-1][center_y] == -1:
+        if (explosion_field[row_id][center_y] == 0 or explosion_field[row_id][center_y] == -2) and field[row_id-1][center_y] == -1:
             agent_x = center_x - row_id
             break
     for col_id in range(0,center_y):
-        if explosion_field[center_x][col_id] == 0 and field[center_x][col_id-1] == -1:
+        if (explosion_field[center_x][col_id] == 0 or explosion_field[center_x][col_id] == -2) and field[center_x][col_id-1] == -1:
             agent_y = center_y - col_id
             break
 
@@ -174,7 +179,7 @@ class CustomEnv(gym.Env):
         # They must be gym.spaces objects
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
-        self.observation_space = spaces.Box(low=-1,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
+        self.observation_space = spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
             # observation space consists of two parts
             # first part is the field without bomb
             # -1: outside of game field
@@ -209,6 +214,7 @@ class CustomEnv(gym.Env):
         # store my agent
         self.my_agent = None
         self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
+        self.my_pos_queue = [] # store the last 3 positions of my agent
         for a in self.world.agents:
             if a.name == "user_agent":
                 self.my_agent = a
@@ -251,7 +257,15 @@ class CustomEnv(gym.Env):
         observation = fromStateToObservation(game_state)
         
         current_pos = game_state["self"][3]
-        
+
+        back_and_forth_reward = 0
+        if len(self.my_pos_queue) == 3:
+            if current_pos == self.my_pos_queue[1]:
+                back_and_forth_reward -= 0.01 # punish the agent for going back and forth
+        self.my_pos_queue.append(current_pos)
+        if len(self.my_pos_queue) > 3:
+            self.my_pos_queue.pop(0)
+
         def in_bomb_range(bomb_x,bomb_y,x,y):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
@@ -292,7 +306,7 @@ class CustomEnv(gym.Env):
         
         # Get reward
         # self.my_agent.last_game_state, self.my_agent.last_action, game_state, self.events
-        reward = death_reward + escape_bomb_reward + closer_to_opponent_reward
+        reward = back_and_forth_reward + death_reward + escape_bomb_reward + closer_to_opponent_reward
         for event in self.my_agent.events:
             if event in [e.MOVED_LEFT, e.MOVED_RIGHT, e.MOVED_UP, e.MOVED_DOWN]:
                 reward += 0
@@ -330,7 +344,7 @@ class CustomEnv(gym.Env):
         super().reset(seed=seed) # following documentation
         
         self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
-        
+        self.my_pos_queue = []
         # start a new round
         self.world.new_round()
 
@@ -399,11 +413,29 @@ class CustonEnv_randomMix(CustomEnv):
         super().__init__(options = {"argv": argv_list})
 
 
+class CustonEnv_random_rule(CustomEnv):
+    def __init__(self):
+        argv_list = ["play","--no-gui","--agents","user_agent"]
+        num_agents = 3
+
+        if random() < 0.7:
+            for _ in range(num_agents):
+                argv_list.append("rule_based_agent")
+        else:
+            for _ in range(num_agents):
+                argv_list.append("random_agent")
+
+        argv_list.append("--train")
+        argv_list.append("1")
+        print("argv_list:",argv_list[4:-2])
+        super().__init__(options = {"argv": argv_list})
+
+
 from gymnasium import register
 import os
 
 register(
-    id='CustomEnv-v1',  # Unique identifier for the environment
+    id='CustomEnv-v1',  # Use all rule_based_agent
     entry_point='CustomEnv:CustomEnv',  # Replace with the actual path to your CustomEnv class
 )
 
@@ -422,6 +454,10 @@ register(
 register(
     id='CustomEnv_randomMix-v0',  # Unique identifier for the environment
     entry_point='CustomEnv:CustonEnv_randomMix',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_random_rule-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustonEnv_random_rule',  # Replace with the actual path to your CustomEnv class
 )
 # tmp_env = gym.make('CustomEnv-v1')
 

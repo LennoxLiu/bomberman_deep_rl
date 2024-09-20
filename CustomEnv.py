@@ -418,7 +418,7 @@ class CustonEnv_random_rule(CustomEnv):
         argv_list = ["play","--no-gui","--agents","user_agent"]
         num_agents = 3
 
-        if random() < 0.7:
+        if random() < 0.75:
             for _ in range(num_agents):
                 argv_list.append("rule_based_agent")
         else:

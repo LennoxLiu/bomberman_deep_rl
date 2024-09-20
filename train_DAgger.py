@@ -72,16 +72,16 @@ configs = {
         "minibatch_size": 256,
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
-            "learning_rate": 0.0003,  # default 3e-4
-            "net_arch": dict(pi=[256, 128, 64, 32], vf=[512, 256, 128, 64, 32]),
+            "learning_rate": 0.003,  # default 3e-4
+            "net_arch": dict(pi=[128, 64, 32], vf=[256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # "nn.ReLU", "nn.LeakyReLU"
             "features_extractor_kwargs": {
-                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 512,
-                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1], "dense2": 512,
-                                    "dense": [512], #512
-                                    "crop_size_1": 19, # field map 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
-                                    "crop_size_2": 11, # bomb map
+                "network_configs": {"cnn1": [32, 64, 128], "cnn1_strides": [1, 1, 2], "dense1": 256,
+                                    "cnn2": [32, 64, 128], "cnn2_strides": [1, 1, 1], "dense2": 256,
+                                    "dense": [256], #512
+                                    "crop_size_1": 17, # field map 21,17, 2*s.ROWS+1=35, 29 would be full range, must be odd
+                                    "crop_size_2": 9, # bomb map
                                 }
             }}
     },
@@ -183,7 +183,7 @@ while True:
     
         with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
             # pickle.dump(dagger_trainer.policy, file)
-            torch.save(dagger_trainer.policy.state_dict(), file, pickle_protocol=5)
+            torch.save(dagger_trainer.policy, file, pickle_protocol=5)
     except Exception as e:
         print("Error saving trainer:", e)
         continue
