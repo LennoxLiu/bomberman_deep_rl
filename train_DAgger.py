@@ -55,19 +55,11 @@ rng = np.random.default_rng(SEED)
 env = make_vec_env(
     'CustomEnv_random_rule-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
-    n_envs=8,
+    n_envs=16,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
 )
-# env_test = make_vec_env(
-#     'CustomEnv_random-v0',
-#     rng=np.random.default_rng(SEED),
-#     n_envs=8,
-#     # to compute rollouts
-#     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
-#     log_dir='logs',
-# )
 env_test = env
 
 expert = RuleBasedPolicy(env.observation_space, env.action_space)
@@ -173,8 +165,9 @@ learner_reward, _ = evaluate_policy(
 print(f"Round 0 Learner reward: {learner_reward:.2f}")
 
 round_id = 1
-custom_logger.record("a/win_rate", 0)
-custom_logger.record("a/score_per_round", 0)
+custom_logger.record("a/win_rate_rule", 0)
+custom_logger.record("a/score_per_round_rule", 0)
+custom_logger.record("a/score_per_round_random", 0)
 custom_logger.record("a/learner_reward", np.mean(learner_reward))
 custom_logger.dump(step=0)
 while True:
@@ -195,21 +188,31 @@ while True:
         print("Error saving trainer:", e)
         continue
 
+    # Record win rate and score per round for the learner against the rule-based agent
     win_rate, score_per_round = test_against_RuleBasedAgent(
-        0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=50, verbose=False)
-    print(f"Round {round_id} Win rate: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
+        0, dagger_trainer.policy, env_id = 'CustomEnv-v1', rounds=50, verbose=False)
+    print(f"Round {round_id} Win rate against: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
     score_per_rounds.append(score_per_round)
-    custom_logger.record("a/win_rate", win_rate)
-    custom_logger.record("a/score_per_round", score_per_round)
+    custom_logger.record("a/win_rate_rule", win_rate)
+    custom_logger.record("a/score_per_round_rule", score_per_round)
     custom_logger.dump(step=round_id)
 
+    # Record win rate and score per round for the learner against the random agent
+    win_rate, score_per_round = test_against_RuleBasedAgent(
+        0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=10, verbose=False)
+    print(f"Round {round_id} Win rate against random: {win_rate:.2f}, Score per round against random: {score_per_round:.2f}")
+    custom_logger.record("a/score_per_round_random", score_per_round)
+    custom_logger.dump(step=round_id)
+
+    # Record learner reward
     learner_reward, _ = evaluate_policy(
         dagger_trainer.policy, env_test, n_eval_episodes=10)
     custom_logger.record("a/learner_reward", np.mean(learner_reward))
     custom_logger.dump(step=round_id)
     print(f"Round {round_id} Learner reward: {learner_reward:.2f}")
 
+    # adjust beta
     mean_reward_list = tu.load_tensorboard_log("dagger/mean_episode_reward")
     mean_range = configs["dagger_trainer"]["mean_range"]
     if len(mean_reward_list) >= 2* mean_range:

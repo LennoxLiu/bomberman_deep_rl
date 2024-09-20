@@ -418,7 +418,7 @@ class CustonEnv_random_rule(CustomEnv):
         argv_list = ["play","--no-gui","--agents","user_agent"]
         num_agents = 3
 
-        if random() < 0.75:
+        if random() < 0.7:
             for _ in range(num_agents):
                 argv_list.append("rule_based_agent")
         else:
@@ -435,7 +435,7 @@ from gymnasium import register
 import os
 
 register(
-    id='CustomEnv-v1',  # Unique identifier for the environment
+    id='CustomEnv-v1',  # Use all rule_based_agent
     entry_point='CustomEnv:CustomEnv',  # Replace with the actual path to your CustomEnv class
 )
 
