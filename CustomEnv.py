@@ -413,6 +413,24 @@ class CustonEnv_randomMix(CustomEnv):
         super().__init__(options = {"argv": argv_list})
 
 
+class CustonEnv_random_rule(CustomEnv):
+    def __init__(self):
+        argv_list = ["play","--no-gui","--agents","user_agent"]
+        num_agents = 3
+
+        if random() < 0.5:
+            for _ in range(num_agents):
+                argv_list.append("rule_based_agent")
+        else:
+            for _ in range(num_agents):
+                argv_list.append("random_agent")
+
+        argv_list.append("--train")
+        argv_list.append("1")
+        print("argv_list:",argv_list[4:-2])
+        super().__init__(options = {"argv": argv_list})
+
+
 from gymnasium import register
 import os
 
@@ -436,6 +454,10 @@ register(
 register(
     id='CustomEnv_randomMix-v0',  # Unique identifier for the environment
     entry_point='CustomEnv:CustonEnv_randomMix',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_random_rule-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustonEnv_random_rule',  # Replace with the actual path to your CustomEnv class
 )
 # tmp_env = gym.make('CustomEnv-v1')
 

@@ -111,8 +111,8 @@ screenshots/*.webm
 
 replays/
 results/
-/Original
 /rule_based_traj
 *.npy
 /checkpoints
 /logs
+*.joblib

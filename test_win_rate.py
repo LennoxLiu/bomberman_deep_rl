@@ -68,18 +68,19 @@ def test_against_RuleBasedAgent(turn_id, agent, env_id = 'CustomEnv_random-v0', 
 
 if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
+    agent=pickle.load(open(f'models/DAgger-v10/policy-checkpoint{36:05d}.pkl','rb'))
+    print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
+    
+    # reports = []
+    # for i in tqdm(range(1,36)):
+    #     agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
+    #     win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,'CustomEnv_random-v0',100,False,False)
+    #     reports.append((i,win_rate,score_per_round))
+    #     print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 
-    reports = []
-    for i in tqdm(range(1,36)):
-        agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
-        win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,'CustomEnv_random-v0',100,False,False)
-        reports.append((i,win_rate,score_per_round))
-        print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
-
-    reports = np.array(reports)
-    print(np.argsort(reports[:, 2]))
-    print(reports)
-    # print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
+    # reports = np.array(reports)
+    # print(np.argsort(reports[:, 2]))
+    # print(reports)
     exit(0)
 ########################### parallel test_against_RuleBasedAgent ###########################
     turns = 10

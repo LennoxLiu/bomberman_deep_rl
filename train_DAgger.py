@@ -10,6 +10,7 @@ from imitation.algorithms import bc
 from imitation.algorithms.dagger import SimpleDAggerTrainer
 from imitation.util.util import make_vec_env
 from torch import device
+import torch
 from torch.cuda import is_available
 from imitation.util import logger as imit_logger
 from imitation.scripts.train_adversarial import save
@@ -52,7 +53,7 @@ def callback(round_num: int, /) -> None:
 SEED = 42
 rng = np.random.default_rng(SEED)
 env = make_vec_env(
-    'CustomEnv_random-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
+    'CustomEnv_random_rule-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
     n_envs=8,
     # to compute rollouts
@@ -60,9 +61,9 @@ env = make_vec_env(
     log_dir='logs',
 )
 # env_test = make_vec_env(
-#     'CustomEnv_randomMix-v0',
+#     'CustomEnv_random-v0',
 #     rng=np.random.default_rng(SEED),
-#     n_envs=16,
+#     n_envs=8,
 #     # to compute rollouts
 #     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
 #     log_dir='logs',
@@ -188,7 +189,8 @@ while True:
         tu.save_DAgger_trainer(dagger_trainer, configs)
     
         with open(f"checkpoints/policy-checkpoint{round_id:05d}.pkl", "wb") as file:
-            pickle.dump(dagger_trainer.policy, file)
+            # pickle.dump(dagger_trainer.policy, file)
+            torch.save(dagger_trainer.policy.state_dict(), file, pickle_protocol=5)
     except Exception as e:
         print("Error saving trainer:", e)
         continue
