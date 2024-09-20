@@ -38,6 +38,11 @@ def linear_schedule(initial_value: float) -> Callable[[float], float]:
 
     return func
 
+def constant_schedule(initial_value: float) -> Callable[[float], float]:
+    def func(progress_remaining: float) -> float:
+        return initial_value
+    return func
+
 
 # beta is a float between 0 and 1 that determines the probability of using the expert policy instead of the learner policy.
 class CustomBetaSchedule(BetaSchedule):

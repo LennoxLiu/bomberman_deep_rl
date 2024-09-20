@@ -73,6 +73,7 @@ configs = {
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
             "learning_rate": 0.0003,  # default 3e-4
+            "learning_rate_schedule": "constant",  # "constant", "linear"
             "net_arch": dict(pi=[128, 64, 32], vf=[256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # "nn.ReLU", "nn.LeakyReLU"
@@ -121,7 +122,7 @@ bc_trainer = bc.BC(
     policy=ActorCriticPolicy(
         env.observation_space,
         env.action_space,
-        tu.linear_schedule(configs['bc_trainer']['policy']["learning_rate"]),
+        tu.constant_schedule(configs['bc_trainer']['policy']["learning_rate"]),
         net_arch=configs['bc_trainer']['policy']["net_arch"],
         activation_fn=nn.ReLU,
         features_extractor_class=tu.CustomCNN,
