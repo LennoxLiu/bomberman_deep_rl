@@ -72,7 +72,7 @@ configs = {
         "minibatch_size": 256,
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
-            "learning_rate": 0.003,  # default 3e-4
+            "learning_rate": 0.0003,  # default 3e-4
             "net_arch": dict(pi=[128, 64, 32], vf=[256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
             "activation_fn": "nn.ReLU", # "nn.ReLU", "nn.LeakyReLU"
