@@ -1,6 +1,7 @@
 import pickle
 import time
 import numpy as np
+import torch
 from RuleBasedAgent import RuleBasedAgent
 import CustomEnv
 import gymnasium as gym
@@ -13,7 +14,7 @@ from imitation.util.util import make_vec_env
 from imitation.data.wrappers import RolloutInfoWrapper
 
 
-def test_against_RuleBasedAgent(turn_id, agent, env_id = 'CustomEnv_random-v0', rounds=10, rule_based_agent = False, verbose=False):
+def test_against_agent(turn_id, agent, rounds=10, env_id = 'CustomEnv_random-v0', rule_based_agent = False, verbose=False):
     user_agent = agent
     # don't end the game early
     # env = CustomEnv.CustomEnv(options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1","--continue-without-training"]})
@@ -68,28 +69,28 @@ def test_against_RuleBasedAgent(turn_id, agent, env_id = 'CustomEnv_random-v0', 
 
 if __name__ == '__main__':
     env = gym.make('CustomEnv-v1')
-    agent=pickle.load(open(f'models/DAgger-v10/policy-checkpoint{36:05d}.pkl','rb'))
-    print("Win rate:", test_against_RuleBasedAgent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
+    # agent=torch.load(open(f'checkpoints/policy-checkpoint{36:05d}.pkl','rb'))
+    # print("Win rate:", test_against_agent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
     
-    # reports = []
-    # for i in tqdm(range(1,36)):
-    #     agent=pickle.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
-    #     win_rate, score_per_round = test_against_RuleBasedAgent(i,agent,'CustomEnv_random-v0',100,False,False)
-    #     reports.append((i,win_rate,score_per_round))
-    #     print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
+    reports = []
+    for i in tqdm([40,48,51,44,29,37]):
+        agent=torch.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
+        win_rate, score_per_round = test_against_agent(i,agent,100,'CustomEnv_random-v0',False,False)
+        reports.append((i,win_rate,score_per_round))
+        print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 
-    # reports = np.array(reports)
-    # print(np.argsort(reports[:, 2]))
-    # print(reports)
+    reports = np.array(reports)
+    print(np.argsort(reports[:, 2]))
+    print(reports)
     exit(0)
-########################### parallel test_against_RuleBasedAgent ###########################
+########################### parallel test_against_agent ###########################
     turns = 10
     num_processes = 14
     start_time = time.time()
     with Pool(num_processes) as pool:
         results = []
         for i in range(turns):
-            result = pool.apply_async(test_against_RuleBasedAgent, args=(i,agent,10,False,True))
+            result = pool.apply_async(test_against_agent, args=(i,agent,10,False,True))
             results.append(result)
 
         # while len(results) > 0 and any([not result.ready() for result in results]):

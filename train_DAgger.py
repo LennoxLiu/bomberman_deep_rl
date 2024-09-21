@@ -72,7 +72,7 @@ configs = {
         "minibatch_size": 256,
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
-            "learning_rate": 1e-5,  # default 3e-4
+            "learning_rate": 1e-6,  # default 3e-4
             "learning_rate_schedule": "constant",  # "constant", "linear"
             "net_arch": dict(pi=[128, 64, 32], vf=[256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
