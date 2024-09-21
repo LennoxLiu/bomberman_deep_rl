@@ -1,3 +1,4 @@
+import os
 from CustomEnv import CustomEnv
 from RuleBasedAgent import RuleBasedAgent
 from CustomEnv import ACTION_MAP
@@ -77,11 +78,13 @@ def train_decision_tree(observations, actions):
         return clf
 
 if __name__ == "__main__":
-    n_rounds = 100  # Number of rounds to generate data
+    n_rounds = 1000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
     observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
+    
+    os.makedirs('decision_tree', exist_ok=True)
     
     # Store the data in a pickle file
     np.save('decision_tree/observations.npy', observations)
