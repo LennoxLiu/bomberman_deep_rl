@@ -16,7 +16,7 @@ from imitation.util import logger as imit_logger
 from imitation.scripts.train_adversarial import save
 from imitation.data.wrappers import RolloutInfoWrapper
 from RuleBasedPolicy import RuleBasedPolicy
-from test_win_rate import test_against_RuleBasedAgent
+from test_win_rate import test_against_agent
 from stable_baselines3.common.policies import ActorCriticPolicy
 import torch.nn as nn
 import train_utils as tu
@@ -190,7 +190,7 @@ while True:
         continue
 
     # Record win rate and score per round for the learner against the rule-based agent
-    win_rate, score_per_round = test_against_RuleBasedAgent(
+    win_rate, score_per_round = test_against_agent(
         0, dagger_trainer.policy, env_id = 'CustomEnv-v1', rounds=50, verbose=False)
     print(f"Round {round_id} Win rate against: {win_rate:.2f}, Score per round: {score_per_round:.2f}")
     win_rates.append(win_rate)
@@ -200,7 +200,7 @@ while True:
     custom_logger.dump(step=round_id)
 
     # Record win rate and score per round for the learner against the random agent
-    win_rate, score_per_round = test_against_RuleBasedAgent(
+    win_rate, score_per_round = test_against_agent(
         0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=10, verbose=False)
     print(f"Round {round_id} Win rate against random: {win_rate:.2f}, Score per round against random: {score_per_round:.2f}")
     custom_logger.record("a/score_per_round_random", score_per_round)
@@ -239,7 +239,7 @@ while True:
 rew_after_training, _ = evaluate_policy(dagger_trainer.policy, env, 100)
 print(
     f"Mean reward before training: {np.mean(rew_before_training):.2f}, after training: {np.mean(rew_after_training):.2f}")
-learner_eval_after = test_against_RuleBasedAgent(
+learner_eval_after = test_against_agent(
     0, dagger_trainer.policy, rounds=50, verbose=True)
 print(
     f"Win rate after training: {learner_eval_after[0]:.2f}, score per round after training: {learner_eval_after[1]:.2f}")
