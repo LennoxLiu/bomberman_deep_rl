@@ -55,7 +55,7 @@ rng = np.random.default_rng(SEED)
 env = make_vec_env(
     'CustomEnv_random_rule-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
-    n_envs=16,
+    n_envs=8,
     # to compute rollouts
     post_wrappers=[lambda env, _: RolloutInfoWrapper(env)],
     log_dir='logs',
@@ -72,7 +72,7 @@ configs = {
         "minibatch_size": 256,
         "l2_weight": 1e-7,  # 1e-7, default: 0
         "policy": {
-            "learning_rate": 0.0003,  # default 3e-4
+            "learning_rate": 1e-5,  # default 3e-4
             "learning_rate_schedule": "constant",  # "constant", "linear"
             "net_arch": dict(pi=[128, 64, 32], vf=[256, 128, 64, 32]),
             "features_extractor_class": "CustomCNN",
