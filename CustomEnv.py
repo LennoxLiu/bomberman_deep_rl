@@ -395,7 +395,7 @@ class CustomEnv_mix(CustomEnv):
         super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","random_agent","rule_based_agent","--train","1"]})
 
 
-class CustonEnv_randomMix(CustomEnv):
+class CustomEnv_randomMix(CustomEnv):
     def __init__(self):
         argv_list = ["play","--no-gui","--agents","user_agent"]
         num_agents = np.random.randint(1,4)
@@ -413,7 +413,7 @@ class CustonEnv_randomMix(CustomEnv):
         super().__init__(options = {"argv": argv_list})
 
 
-class CustonEnv_random_rule(CustomEnv):
+class CustomEnv_random_rule(CustomEnv):
     def __init__(self):
         argv_list = ["play","--no-gui","--agents","user_agent"]
         num_agents = 3
@@ -453,11 +453,11 @@ register(
 )
 register(
     id='CustomEnv_randomMix-v0',  # Unique identifier for the environment
-    entry_point='CustomEnv:CustonEnv_randomMix',  # Replace with the actual path to your CustomEnv class
+    entry_point='CustomEnv:CustomEnv_randomMix',  # Replace with the actual path to your CustomEnv class
 )
 register(
     id='CustomEnv_random_rule-v0',  # Unique identifier for the environment
-    entry_point='CustomEnv:CustonEnv_random_rule',  # Replace with the actual path to your CustomEnv class
+    entry_point='CustomEnv:CustomEnv_random_rule',  # Replace with the actual path to your CustomEnv class
 )
 # tmp_env = gym.make('CustomEnv-v1')
 

@@ -93,15 +93,15 @@ class RuleBasedAgent():
         which is a dictionary. Consult 'get_state_for_agent' in environment.py to see
         what it contains.
         """
-        game_state = fromObservationToState(observation)
-        # print("game_state in RuleBasedAgent:", game_state)
-
         if self.has_memory:
+            game_state = observation
             # Check if we are in a different round
             if game_state["round"] != self.current_round:
                 self.reset()
                 self.current_round = game_state["round"]
-
+        else:
+            game_state = fromObservationToState(observation)
+        
         # Gather information about the game state
         arena = game_state['field']
         _, score, bombs_left, (x, y) = game_state['self']
