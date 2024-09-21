@@ -10,6 +10,7 @@ from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
+from multiprocessing import Pool, cpu_count
 
 # Crop the observation for smaller feature space
 def crop_observation(observation, crop_size_1, crop_size_2):
@@ -34,7 +35,7 @@ def crop_observation(observation, crop_size_1, crop_size_2):
     return np.concatenate((obs1, obs2))
 
 
-def prepare_data(n_rounds, crop_size_1, crop_size_2):
+def generate_data(n_rounds, crop_size_1, crop_size_2):
     # Create a custom environment, can configure the opponents through options
     option_rule =  {"argv": ["play","--no-gui","--my-agent","user_agent", "--train", "1"]}
     option_random =  {"argv": ["play","--no-gui","--agents","user_agent", "random_agent", "random_agent", "random_agent", "--train", "1"]}
@@ -68,6 +69,21 @@ def prepare_data(n_rounds, crop_size_1, crop_size_2):
                 observations.append(observation_crop)
 
     return np.array(observations), np.array(actions)
+
+def prepare_data(n_rounds, crop_size_1, crop_size_2):
+    num_workers = cpu_count()
+    rounds_per_worker = n_rounds // num_workers
+    pool = Pool(num_workers)
+    
+    results = pool.starmap(generate_data, [(rounds_per_worker, crop_size_1, crop_size_2) for _ in range(num_workers)])
+    
+    pool.close()
+    pool.join()
+    
+    observations = np.concatenate([result[0] for result in results], axis=0)
+    actions = np.concatenate([result[1] for result in results], axis=0)
+    
+    return observations, actions
 
 
 def train_decision_tree(observations, actions):
