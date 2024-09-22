@@ -53,7 +53,7 @@ def callback(round_num: int, /) -> None:
 SEED = 42
 rng = np.random.default_rng(SEED)
 env = make_vec_env(
-    'CustomEnv_random_rule-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
+    'CustomEnv_random-v0', #  'CustomEnv_randomMix-v0'train against differnt agents
     rng=np.random.default_rng(SEED),
     n_envs=8,
     # to compute rollouts
@@ -95,7 +95,7 @@ configs = {
             "n_epochs": 4,  # default: 4
         },
         # The initial value of beta. The probability of using the expert policy instead of the learner policy.
-        "beta0": 0.9,
+        "beta0": 0.5,
         # "delta_beta": 0.05, # The amount that beta decreases by each round.
         # The final value of beta. The probability of using the expert policy instead of the learner policy.
         "beta_final": 0.1,
