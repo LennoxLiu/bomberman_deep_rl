@@ -302,11 +302,6 @@ class GenericWorld:
             self.logger.info('Maximum number of steps reached, wrap up round')
             return True
 
-        # if my training agent is dead
-        for a in self.agents:
-            if a.name == "user_agent" and a.dead:
-                return True
-
         return False
 
     def end(self):

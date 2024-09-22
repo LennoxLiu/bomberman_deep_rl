@@ -94,7 +94,7 @@ def world_controller(world, n_rounds, *,
     world.end()
 
 
-def my_main_parser(argv = None):
+def main(argv = None):
     parser = ArgumentParser()
 
     subparsers = parser.add_subparsers(dest='command_name', required=True)
@@ -103,7 +103,8 @@ def my_main_parser(argv = None):
     play_parser = subparsers.add_parser("play")
     agent_group = play_parser.add_mutually_exclusive_group()
     agent_group.add_argument("--my-agent", type=str, help="Play agent of name ... against three rule_based_agents")
-    agent_group.add_argument("--agents", type=str, nargs="+", default=["rule_based_agent"] * s.MAX_AGENTS, help="Explicitly set the agent names in the game")
+    agent_group.add_argument("--agents", type=str, nargs="+", default=["rule_based_agent"] * s.MAX_AGENTS
+    , help="Explicitly set the agent names in the game")
     play_parser.add_argument("--train", default=0, type=int, choices=[0, 1, 2, 3, 4],
                              help="First … agents should be set to training mode")
     play_parser.add_argument("--continue-without-training", default=False, action="store_true")
@@ -175,12 +176,10 @@ def my_main_parser(argv = None):
         gui = GUI(world)
     else:
         gui = None
-
-    return world, args.n_rounds, gui, every_step, args.turn_based, args.make_video, args.update_interval
-    # world_controller(world, args.n_rounds,
-    #                  gui=gui, every_step=every_step, turn_based=args.turn_based,
-    #                  make_video=args.make_video, update_interval=args.update_interval)
+    world_controller(world, args.n_rounds,
+                     gui=gui, every_step=every_step, turn_based=args.turn_based,
+                     make_video=args.make_video, update_interval=args.update_interval)
 
 
 if __name__ == '__main__':
-    my_main_parser()
+    main()
