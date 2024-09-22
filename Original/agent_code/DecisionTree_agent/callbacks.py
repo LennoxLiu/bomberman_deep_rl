@@ -11,6 +11,7 @@ import train_utils as tu
 import torch
 import numpy as np
 import settings as s
+from GetFeatures import GetFeatures
 
 # Crop the observation for smaller feature space
 def crop_observation(observation, crop_size_1, crop_size_2):
@@ -38,11 +39,16 @@ def setup(self):
     self.model = pickle.load(open('decision_tree_model.pkl','rb'))
     print(self.model)
 
+    self.feature_extractor = GetFeatures()
+
 
 def act(self, game_state: dict):
-    observation = fromStateToObservation(game_state)
-    observation = crop_observation(observation, 17, 9).reshape(1, -1)
-    action = self.model.predict(observation)[0]
+    # observation = fromStateToObservation(game_state)
+    # observation = crop_observation(observation, 17, 9).reshape(1, -1)
+    # action = self.model.predict(observation)[0]
+
+    feature = self.feature_extractor.state_to_features(game_state).reshape(1, -1)
+    action = self.model.predict(feature)[0]
 
     # print(ACTION_MAP[action])
     self.logger.info("Pick action: "+ ACTION_MAP[action])

@@ -2,6 +2,7 @@ import os
 import pickle
 import shutil
 from CustomEnv import CustomEnv
+from GetFeatures import GetFeatures
 from RuleBasedAgent import RuleBasedAgent
 from CustomEnv import ACTION_MAP
 import settings as s
@@ -42,14 +43,16 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
     
     env = CustomEnv(options= option_random)
     agent = RuleBasedAgent(has_memory=True) # mimic the rule-based agent
+    feature_extractor = GetFeatures()
 
     observations = []
     actions = []
     # can do faster by multiprocessing
     for _ in tqdm(range(n_rounds)):
         observation, game_state = env.reset()
-        observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
-        observations.append(observation_crop)
+        # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+        features = feature_extractor.state_to_features(game_state)
+        observations.append(features)
         
         agent.reset()
         terminated = False
@@ -60,13 +63,13 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
             actions.append(action_index)
 
             observation, reward, terminated, truncated, game_state = env.step(action_index)
-            observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
-            
+            # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+            features = feature_extractor.state_to_features(game_state)
         
             if terminated or truncated:
                 break
             else:
-                observations.append(observation_crop)
+                observations.append(features)
 
     return np.array(observations), np.array(actions)
 
@@ -100,11 +103,14 @@ if __name__ == "__main__":
     shutil.copyfile('train_utils.py', 'logs/train_utils.py')
     shutil.copyfile('train_DecisionTree.py', 'logs/train_DecisionTree.py')
     
-    n_rounds = 10000  # Number of rounds to generate data
+    n_rounds = 1000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
     observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
+    # load the data from the npy files
+    # observations = np.load('decision_tree/observations.npy')
+    # actions = np.load('decision_tree/actions.npy')
 
     os.makedirs('decision_tree', exist_ok=True)
     
