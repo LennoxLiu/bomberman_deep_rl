@@ -116,7 +116,7 @@ if __name__ == "__main__":
         shutil.copyfile('train_DecisionTree.py', 'Original/agent_code/DecisionTree_agent/train_DecisionTree.py')
         shutil.copyfile('GetFeatures.py', 'Original/agent_code/DecisionTree_agent/GetFeatures.py')
 
-    n_rounds = 10000  # Number of rounds to generate data
+    n_rounds = 2000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
