@@ -100,7 +100,7 @@ if __name__ == "__main__":
     shutil.copyfile('train_utils.py', 'logs/train_utils.py')
     shutil.copyfile('train_DecisionTree.py', 'logs/train_DecisionTree.py')
     
-    n_rounds = 1000  # Number of rounds to generate data
+    n_rounds = 10000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
@@ -119,8 +119,8 @@ if __name__ == "__main__":
     decision_tree = train_decision_tree(X_train, y_train)
     
     # Validate the model on the training set
-    y_train_pred = decision_tree.predict(X_train[:int(len(X_train)/10)])
-    train_accuracy = accuracy_score(y_train[:int(len(X_train)/10)], y_train_pred)
+    y_train_pred = decision_tree.predict(X_train[:100])
+    train_accuracy = accuracy_score(y_train[:100], y_train_pred)
     print(f"Training Accuracy: {train_accuracy:.3f}")
 
     # Validate the model on the validation set
