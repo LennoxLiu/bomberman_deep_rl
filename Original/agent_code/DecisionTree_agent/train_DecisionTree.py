@@ -2,6 +2,7 @@ import os
 import pickle
 import shutil
 from CustomEnv import CustomEnv
+from GetFeatures import GetFeatures
 from RuleBasedAgent import RuleBasedAgent
 from CustomEnv import ACTION_MAP
 import settings as s
@@ -30,11 +31,10 @@ def crop_observation(observation, crop_size_1, crop_size_2):
 
     # Reshape and standardize the input to [0,1]
     # May or may not need to standardize the input for decision tree
-    # obs1 = obs1 / 8
-    # obs2 = obs2 / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+    obs1 = obs1 / 8
+    obs2 = obs2 / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
 
     return np.concatenate((obs1, obs2))
-
 
 def generate_data(n_rounds, crop_size_1, crop_size_2):
     # Create a custom environment, can configure the opponents through options
@@ -43,14 +43,18 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
     
     env = CustomEnv(options= option_random)
     agent = RuleBasedAgent(has_memory=True) # mimic the rule-based agent
+    feature_extractor = GetFeatures()
 
     observations = []
     actions = []
     # can do faster by multiprocessing
     for _ in tqdm(range(n_rounds)):
         observation, game_state = env.reset()
-        observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
-        observations.append(observation_crop)
+        feature_extractor.reset()
+
+        # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+        features = feature_extractor.state_to_features(game_state)
+        observations.append(features)
         
         agent.reset()
         terminated = False
@@ -61,13 +65,13 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
             actions.append(action_index)
 
             observation, reward, terminated, truncated, game_state = env.step(action_index)
-            observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
-            
+            # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+            features = feature_extractor.state_to_features(game_state)
         
             if terminated or truncated:
                 break
             else:
-                observations.append(observation_crop)
+                observations.append(features)
 
     return np.array(observations), np.array(actions)
 
@@ -96,16 +100,30 @@ def train_decision_tree(observations, actions):
 
 if __name__ == "__main__":
     os.makedirs('logs', exist_ok=True)
+    os.makedirs('decision_tree', exist_ok=True)
+    os.makedirs('Original/agent_code/DecisionTree_agent', exist_ok=True)
     # Save the code for reference
-    shutil.copyfile('CustomEnv.py', 'logs/CustomEnv.py')
-    shutil.copyfile('train_utils.py', 'logs/train_utils.py')
-    shutil.copyfile('train_DecisionTree.py', 'logs/train_DecisionTree.py')
+    shutil.copyfile('CustomEnv.py', 'decision_tree/CustomEnv.py')
+    shutil.copyfile('train_utils.py', 'decision_tree/train_utils.py')
+    shutil.copyfile('train_DecisionTree.py', 'decision_tree/train_DecisionTree.py')
+    shutil.copyfile('GetFeatures.py', 'decision_tree/GetFeatures.py')
     
-    n_rounds = 1000  # Number of rounds to generate data
+    save_to_agent_folder = input(
+    "Do you want to replace the files in agent_code folder with current setup? (y/n): ")
+    if save_to_agent_folder.lower() == 'y':
+        shutil.copyfile('CustomEnv.py', 'Original/agent_code/DecisionTree_agent/CustomEnv.py')
+        shutil.copyfile('train_utils.py', 'Original/agent_code/DecisionTree_agent/train_utils.py')
+        shutil.copyfile('train_DecisionTree.py', 'Original/agent_code/DecisionTree_agent/train_DecisionTree.py')
+        shutil.copyfile('GetFeatures.py', 'Original/agent_code/DecisionTree_agent/GetFeatures.py')
+
+    n_rounds = 10000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
     observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
+    # load the data from the npy files
+    # observations = np.load('decision_tree/observations.npy')
+    # actions = np.load('decision_tree/actions.npy')
 
     os.makedirs('decision_tree', exist_ok=True)
     
@@ -120,8 +138,8 @@ if __name__ == "__main__":
     decision_tree = train_decision_tree(X_train, y_train)
     
     # Validate the model on the training set
-    y_train_pred = decision_tree.predict(X_train[:int(len(X_train)/10)])
-    train_accuracy = accuracy_score(y_train[:int(len(X_train)/10)], y_train_pred)
+    y_train_pred = decision_tree.predict(X_train[:100])
+    train_accuracy = accuracy_score(y_train[:100], y_train_pred)
     print(f"Training Accuracy: {train_accuracy:.3f}")
 
     # Validate the model on the validation set
@@ -132,3 +150,7 @@ if __name__ == "__main__":
     # Save the trained model
     with open('decision_tree/decision_tree_model.pkl', 'wb') as f:
         pickle.dump(decision_tree, f)
+    
+    if save_to_agent_folder.lower() == 'y':
+        shutil.copyfile('decision_tree/decision_tree_model.pkl', 'Original/agent_code/DecisionTree_agent/decision_tree_model.pkl')
+        print("Model saved to agent_code folder")

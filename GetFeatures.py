@@ -38,7 +38,7 @@ def in_bomb_range(field,bomb_x,bomb_y,x,y):
 
 class GetFeatures():
         def __init__(self):
-            pass
+            self.last_targeted_crate = None
         
         def manhattan_distance(self, point1, point2):
             x1, y1 = point1
@@ -233,6 +233,26 @@ class GetFeatures():
                 return indices
 
             crates_pos = find_indices_of_value(game_state["field"], 1)
+            if self.last_targeted_crate is not None and self.last_targeted_crate in crates_pos:
+                crates_pos = [self.last_targeted_crate] # target the same crate to break the tie
+            else:
+                # target the nearest crate
+                current_pos = (x_now, y_now)
+                target_pos_list = crates_pos
+                # to save time, use manhattan distance for large number of targets
+                target_distances = [self.manhattan_distance(current_pos, pos) \
+                                    for pos in target_pos_list]
+                combined = list(zip(target_pos_list, target_distances))
+                # Sort based on the values from the second list
+                sorted_combined = sorted(combined, key=lambda x: x[1])
+                # Extract the first list from the sorted pairs
+                closest_target = [pair[0] for pair in sorted_combined] # only take the closest target
+                if len(closest_target) < 1: # padding to 1 items
+                    closest_target=[(INF,INF)]
+
+                self.last_targeted_crate = closest_target[0]
+                crates_pos = [self.last_targeted_crate]
+
             # add nearest 1 crates
             features.append(self.get_distances_directions(game_state["field"],
                                                            (x_now,y_now), crates_pos, 1)) # dim = 4*n
@@ -281,6 +301,22 @@ class GetFeatures():
             
             features.append(escape)
 
+            # add features for explosion map
+            explosion_features = np.zeros(len(neighbours))
+            for i, (nx, ny) in enumerate(neighbours):
+                if game_state['explosion_map'][nx, ny] > 0:
+                    explosion_features[i] = 1
+            features.append(explosion_features)
+
+            # add bomb range according to timer
+            bomb_range_features = np.ones(len(neighbours))
+            for bomb, timer in game_state['bombs']:
+                bomb_x, bomb_y = bomb
+                for i, (nx, ny) in enumerate(neighbours):
+                    if in_bomb_range(game_state['field'], bomb_x, bomb_y, nx, ny):
+                        bomb_range_features[i] = min(bomb_range_features[i], timer-1 / s.BOMB_TIMER)
+            features.append(bomb_range_features)
+
 
             # flatten features and convert it to np.array
             def flatten_list(lst):
@@ -297,4 +333,4 @@ class GetFeatures():
             return np.array(flatten_list(features), dtype = np.float16)
     
         def reset(self):
-            pass
+            self.last_targeted_crate = None

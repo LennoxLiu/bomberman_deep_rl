@@ -50,6 +50,8 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
     # can do faster by multiprocessing
     for _ in tqdm(range(n_rounds)):
         observation, game_state = env.reset()
+        feature_extractor.reset()
+
         # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
         features = feature_extractor.state_to_features(game_state)
         observations.append(features)
@@ -98,12 +100,23 @@ def train_decision_tree(observations, actions):
 
 if __name__ == "__main__":
     os.makedirs('logs', exist_ok=True)
+    os.makedirs('decision_tree', exist_ok=True)
+    os.makedirs('Original/agent_code/DecisionTree_agent', exist_ok=True)
     # Save the code for reference
-    shutil.copyfile('CustomEnv.py', 'logs/CustomEnv.py')
-    shutil.copyfile('train_utils.py', 'logs/train_utils.py')
-    shutil.copyfile('train_DecisionTree.py', 'logs/train_DecisionTree.py')
+    shutil.copyfile('CustomEnv.py', 'decision_tree/CustomEnv.py')
+    shutil.copyfile('train_utils.py', 'decision_tree/train_utils.py')
+    shutil.copyfile('train_DecisionTree.py', 'decision_tree/train_DecisionTree.py')
+    shutil.copyfile('GetFeatures.py', 'decision_tree/GetFeatures.py')
     
-    n_rounds = 1000  # Number of rounds to generate data
+    save_to_agent_folder = input(
+    "Do you want to replace the files in agent_code folder with current setup? (y/n): ")
+    if save_to_agent_folder.lower() == 'y':
+        shutil.copyfile('CustomEnv.py', 'Original/agent_code/DecisionTree_agent/CustomEnv.py')
+        shutil.copyfile('train_utils.py', 'Original/agent_code/DecisionTree_agent/train_utils.py')
+        shutil.copyfile('train_DecisionTree.py', 'Original/agent_code/DecisionTree_agent/train_DecisionTree.py')
+        shutil.copyfile('GetFeatures.py', 'Original/agent_code/DecisionTree_agent/GetFeatures.py')
+
+    n_rounds = 2000  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
@@ -137,3 +150,7 @@ if __name__ == "__main__":
     # Save the trained model
     with open('decision_tree/decision_tree_model.pkl', 'wb') as f:
         pickle.dump(decision_tree, f)
+    
+    if save_to_agent_folder.lower() == 'y':
+        shutil.copyfile('decision_tree/decision_tree_model.pkl', 'Original/agent_code/DecisionTree_agent/decision_tree_model.pkl')
+        print("Model saved to agent_code folder")
