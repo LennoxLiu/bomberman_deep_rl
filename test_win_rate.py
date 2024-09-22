@@ -73,7 +73,7 @@ if __name__ == '__main__':
     # print("Win rate:", test_against_agent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
     
     reports = []
-    for i in tqdm([40,48,51,44,29,37]):
+    for i in tqdm([35,36]):
         agent=torch.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
         win_rate, score_per_round = test_against_agent(i,agent,100,'CustomEnv_random-v0',False,False)
         reports.append((i,win_rate,score_per_round))
