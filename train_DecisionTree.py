@@ -13,6 +13,27 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from multiprocessing import Pool, cpu_count
 
+# Crop the observation for smaller feature space
+def crop_observation(observation, crop_size_1, crop_size_2):
+    obs1, obs2 = observation[0], observation[1]
+        
+    crop_diam_1 = int((crop_size_1 - 1) / 2)
+    crop_diam_2 = int((crop_size_2 - 1) / 2)
+        
+    # crop obs to crop_size x crop_size
+    obs1 = obs1[s.ROWS-crop_diam_1:s.ROWS+crop_diam_1+1,s.COLS-crop_diam_1:s.COLS+crop_diam_1+1]
+    obs2 = obs2[s.ROWS-crop_diam_2:s.ROWS+crop_diam_2+1,s.COLS-crop_diam_2:s.COLS+crop_diam_2+1]
+    
+    # flatten the cropped observation
+    obs1 = obs1.reshape(crop_size_1* crop_size_1)
+    obs2 = obs2.reshape(crop_size_2* crop_size_2)
+
+    # Reshape and standardize the input to [0,1]
+    # May or may not need to standardize the input for decision tree
+    # obs1 = obs1 / 8
+    # obs2 = obs2 / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+
+    return np.concatenate((obs1, obs2))
 
 def generate_data(n_rounds, crop_size_1, crop_size_2):
     # Create a custom environment, can configure the opponents through options
