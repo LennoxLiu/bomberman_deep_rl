@@ -30,8 +30,8 @@ def crop_observation(observation, crop_size_1, crop_size_2):
 
     # Reshape and standardize the input to [0,1]
     # May or may not need to standardize the input for decision tree
-    # obs1 = obs1 / 8
-    # obs2 = obs2 / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
+    obs1 = obs1 / 8
+    obs2 = obs2 / s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4
 
     return np.concatenate((obs1, obs2))
 
