@@ -1,11 +1,11 @@
 import os
+import pickle
 from CustomEnv import CustomEnv
 from RuleBasedAgent import RuleBasedAgent
 from CustomEnv import ACTION_MAP
 import settings as s
 import torch as th
 from sklearn.tree import DecisionTreeClassifier
-import joblib
 from tqdm import tqdm
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -56,9 +56,9 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
         truncated = False
         while not (terminated or truncated):
             action = agent.act(game_state) # act based on un-cropped observation
-            actions.append(action)
             action_index = ACTION_MAP.index(action)
-            
+            actions.append(action_index)
+
             observation, reward, terminated, truncated, game_state = env.step(action_index)
             observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
             
@@ -94,12 +94,14 @@ def train_decision_tree(observations, actions):
         return clf
 
 if __name__ == "__main__":
-    n_rounds = 1000  # Number of rounds to generate data
+    os.makedirs('logs', exist_ok=True)
+
+    n_rounds = 100  # Number of rounds to generate data
     crop_size_1 = 17  # crop size for field map
     crop_size_2 = 9  # crop size for bomb map
     
     observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
-    
+
     os.makedirs('decision_tree', exist_ok=True)
     
     # Store the data in a pickle file
@@ -112,10 +114,16 @@ if __name__ == "__main__":
     # Train the decision tree on the training set
     decision_tree = train_decision_tree(X_train, y_train)
     
+    # Validate the model on the training set
+    y_train_pred = decision_tree.predict(X_train[:int(len(X_train)/10)])
+    train_accuracy = accuracy_score(y_train[:int(len(X_train)/10)], y_train_pred)
+    print(f"Training Accuracy: {train_accuracy:.3f}")
+
     # Validate the model on the validation set
     y_pred = decision_tree.predict(X_val)
     accuracy = accuracy_score(y_val, y_pred)
-    print(f"Validation Accuracy: {accuracy:.2f}")
+    print(f"Validation Accuracy: {accuracy:.3f}")
     
     # Save the trained model
-    joblib.dump(decision_tree, 'decision_tree/decision_tree_model.pkl')
+    with open('decision_tree/decision_tree_model.pkl', 'wb') as f:
+        pickle.dump(decision_tree, f)
