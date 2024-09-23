@@ -67,10 +67,10 @@ def act(self, game_state: dict):
     else:
         self.prev_is_classic_model = 0
     
-    if self.prev_is_classic_model > 2:
+    if self.prev_is_classic_model > 3:
         self.using_deep_model = True
-        print(f"Step {step}: Switch to Deep model after 2 consecutive steps of Classic model")
-        self.logger.info(f"Step {step}: Switch to Deep model after 2 consecutive steps of Classic model")
+        print(f"Step {step}: Switch to Deep model after 3 consecutive steps of Classic model")
+        self.logger.info(f"Step {step}: Switch to Deep model after 3 consecutive steps of Classic model")
     
     observation = fromStateToObservation(game_state)
     if self.using_deep_model:
