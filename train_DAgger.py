@@ -201,7 +201,7 @@ while True:
 
     # Record win rate and score per round for the learner against the random agent
     win_rate, score_per_round = test_against_agent(
-        0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=10, verbose=False)
+        0, dagger_trainer.policy, env_id = 'CustomEnv_random-v0', rounds=50, verbose=False)
     print(f"Round {round_id} Win rate against random: {win_rate:.2f}, Score per round against random: {score_per_round:.2f}")
     custom_logger.record("a/score_per_round_random", score_per_round)
     custom_logger.dump(step=round_id)
