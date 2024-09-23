@@ -43,12 +43,13 @@ def setup(self):
 
 
 def act(self, game_state: dict):
-    # observation = fromStateToObservation(game_state)
-    # observation = crop_observation(observation, 17, 9).reshape(1, -1)
+    observation = fromStateToObservation(game_state)
+    observation_crop = crop_observation(observation, 9, 17)
     # action = self.model.predict(observation)[0]
 
-    feature = self.feature_extractor.state_to_features(game_state).reshape(1, -1)
-    action = self.model.predict(feature)[0]
+    feature = self.feature_extractor.state_to_features(game_state)
+    input = np.concatenate((feature,observation_crop)).reshape(1, -1)
+    action = self.model.predict(input)[0]
 
     # print(ACTION_MAP[action])
     self.logger.info("Pick action: "+ ACTION_MAP[action])

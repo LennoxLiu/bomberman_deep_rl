@@ -1,0 +1,1 @@
+python ./Original/main.py play --agents DecisionTree_agent random_agent random_agent peaceful_agent

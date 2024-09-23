@@ -1,6 +1,8 @@
 import os
 import pickle
 import shutil
+
+from sklearn.ensemble import RandomForestClassifier
 from CustomEnv import CustomEnv
 from GetFeatures import GetFeatures
 from RuleBasedAgent import RuleBasedAgent
@@ -52,9 +54,9 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
         observation, game_state = env.reset()
         feature_extractor.reset()
 
-        # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+        observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
         features = feature_extractor.state_to_features(game_state)
-        observations.append(features)
+        observations.append(np.concatenate((features, observation_crop)))
         
         agent.reset()
         terminated = False
@@ -65,13 +67,13 @@ def generate_data(n_rounds, crop_size_1, crop_size_2):
             actions.append(action_index)
 
             observation, reward, terminated, truncated, game_state = env.step(action_index)
-            # observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
+            observation_crop = crop_observation(observation, crop_size_1, crop_size_2)
             features = feature_extractor.state_to_features(game_state)
         
             if terminated or truncated:
                 break
             else:
-                observations.append(features)
+                observations.append(np.concatenate((features, observation_crop)))
 
     return np.array(observations), np.array(actions)
 
@@ -93,7 +95,8 @@ def prepare_data(n_rounds, crop_size_1, crop_size_2):
 
 def train_decision_tree(observations, actions):
         # Initialize and train the decision tree classifier
-        clf = DecisionTreeClassifier()
+        # clf = DecisionTreeClassifier()
+        clf = RandomForestClassifier(n_estimators=20, max_features=0.99)
         clf.fit(observations, actions)
         
         return clf
@@ -117,19 +120,19 @@ if __name__ == "__main__":
         shutil.copyfile('GetFeatures.py', 'Original/agent_code/DecisionTree_agent/GetFeatures.py')
 
     n_rounds = 2000  # Number of rounds to generate data
-    crop_size_1 = 17  # crop size for field map
-    crop_size_2 = 9  # crop size for bomb map
+    crop_size_1 = 9  # crop size for field map
+    crop_size_2 = 17  # crop size for bomb map
     
-    observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
+    # observations, actions = prepare_data(n_rounds, crop_size_1, crop_size_2)
     # load the data from the npy files
-    # observations = np.load('decision_tree/observations.npy')
-    # actions = np.load('decision_tree/actions.npy')
+    observations = np.load('decision_tree/observations.npy')
+    actions = np.load('decision_tree/actions.npy')
 
     os.makedirs('decision_tree', exist_ok=True)
     
     # Store the data in a pickle file
-    np.save('decision_tree/observations.npy', observations)
-    np.save('decision_tree/actions.npy', actions)
+    # np.save('decision_tree/observations.npy', observations)
+    # np.save('decision_tree/actions.npy', actions)
 
     # Split the data into training and validation sets
     X_train, X_val, y_train, y_val = train_test_split(observations, actions, test_size=0.1, random_state=42)
