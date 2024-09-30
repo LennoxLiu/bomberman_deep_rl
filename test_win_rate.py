@@ -2,6 +2,7 @@ import pickle
 import time
 import numpy as np
 import torch
+from DAggerRandomForestAgent import DAggerRandomForestAgent
 from RuleBasedAgent import RuleBasedAgent
 import CustomEnv
 import gymnasium as gym
@@ -68,20 +69,23 @@ def test_against_agent(turn_id, agent, rounds=10, env_id = 'CustomEnv_random-v0'
 
 
 if __name__ == '__main__':
-    env = gym.make('CustomEnv-v1')
-    # agent=torch.load(open(f'checkpoints/policy-checkpoint{36:05d}.pkl','rb'))
-    # print("Win rate:", test_against_agent(0,RuleBasedAgent(has_memory=False),1, rule_based_agent=True,verbose=True))
+    agent = DAggerRandomForestAgent()
+    # agent = torch.load(open('models/DAgger_RandomForest/policy-checkpoint.pkl','rb'))
+    print("Win rate:", test_against_agent(0,agent,100,'CustomEnv-v1', rule_based_agent=True,verbose=False))
     
-    reports = []
-    for i in tqdm([35,36]):
-        agent=torch.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
-        win_rate, score_per_round = test_against_agent(i,agent,100,'CustomEnv_random-v0',False,False)
-        reports.append((i,win_rate,score_per_round))
-        print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
+    # env = gym.make('CustomEnv-v1')
+    # agent=torch.load(open(f'checkpoints/policy-checkpoint{36:05d}.pkl','rb'))
+    
+    # reports = []
+    # for i in tqdm([35,36]):
+    #     agent=torch.load(open(f'checkpoints/policy-checkpoint{i:05d}.pkl','rb'))
+    #     win_rate, score_per_round = test_against_agent(i,agent,100,'CustomEnv_random-v0',False,False)
+    #     reports.append((i,win_rate,score_per_round))
+    #     print(f"checkpoint {i:3d} win rate: {win_rate:.2f}, score per round: {score_per_round:.2f}")
 
-    reports = np.array(reports)
-    print(np.argsort(reports[:, 2]))
-    print(reports)
+    # reports = np.array(reports)
+    # print(np.argsort(reports[:, 2]))
+    # print(reports)
     exit(0)
 ########################### parallel test_against_agent ###########################
     turns = 10
