@@ -111,3 +111,9 @@ screenshots/*.webm
 
 replays/
 results/
+/rule_based_traj
+*.npy
+/checkpoints
+/logs
+*.joblib
+/Original/agent_code/DAgger_RandomForest

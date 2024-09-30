@@ -399,14 +399,17 @@ class BombeRLeWorld(GenericWorld):
         return arena, coins, active_agents
 
     def get_state_for_agent(self, agent: Agent):
+        self_state = agent.get_state()
         if agent.dead:
-            return None
+            # return None
+            self_name, self_score, self_bombs_left, self_pos = self_state
+            self_state = ('DEAD',self_score, self_bombs_left, self_pos) # change the agent name to DEAD when the agent is dead
 
         state = {
             'round': self.round,
             'step': self.step,
             'field': np.array(self.arena),
-            'self': agent.get_state(),
+            'self': self_state,
             'others': [other.get_state() for other in self.active_agents if other is not agent],
             'bombs': [bomb.get_state() for bomb in self.bombs],
             'coins': [coin.get_state() for coin in self.coins if coin.collectable],
@@ -496,7 +499,8 @@ class BombeRLeWorld(GenericWorld):
 
         # Send final event to agents that expect them
         for a in self.agents:
-            if a.train:
+            # if a.train:
+            if a.name == "user_agent":
                 a.round_ended()
 
         # Save course of the game for future replay
@@ -512,7 +516,13 @@ class BombeRLeWorld(GenericWorld):
         for a in self.agents:
             # Send exit message to shut down agent
             self.logger.debug(f'Sending exit message to agent <{a.name}>')
-            # todo multiprocessing shutdown
+            
+            # reset all agents
+            a.reset()
+
+        # reset all states
+        self.round = 0
+        self.round_statistics = {}
 
 
 class GUI:

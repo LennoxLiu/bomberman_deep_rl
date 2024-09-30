@@ -1,8 +1,10 @@
+from random import random
+import string
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from stable_baselines3.common.env_checker import check_env
-from gymnasium.spaces import Box, MultiDiscrete
+from gymnasium import spaces
 import settings as s
 import events as e
 import agents
@@ -10,44 +12,160 @@ import agents
 import main
 from fallbacks import pygame, LOADED_PYGAME
 import math
+from imitation.util.util import make_vec_env
+from imitation.data.wrappers import RolloutInfoWrapper
 
 ACTION_MAP = ['UP', 'DOWN', 'LEFT', 'RIGHT', 'WAIT', 'BOMB']
 
 def fromStateToObservation(game_state):
-        observation = {}
-        one_array = np.ones(s.COLS * s.ROWS)
+        observation = None
         # 0: stone walls, 1: free tiles, 2: crates, 
-        observation["field"] = game_state["field"].astype(np.uint8) + 1
+        field = game_state["field"].astype(np.int8) + 1
         #3: coins,
         for coin in game_state["coins"]:
-            observation["field"][coin] = 3
+            field[coin] = 3
         # 4: no bomb opponents, 5: has bomb opponents,
         for other in game_state["others"]:
             if other[2] == False: # bombs_left == False
-                observation["field"][other[3]] = 4
+                field[other[3]] = 4
             else:
-                observation["field"][other[3]] = 5
+                field[other[3]] = 5
 
-        # 7~7+s.EXPLOSION_TIMER: explosion map
-        explosion_map = game_state["explosion_map"].astype(np.uint8)
-        # Replace elements in observation with corresponding elements+8 from explosion_map if explosion_map elements are non-zero
-        observation["field"][explosion_map != 0] = explosion_map[explosion_map != 0] + 7
+        # 6: self, 7: self with bomb
+        field[game_state['self'][3]] = 6 if game_state['self'][2] == False else 7
+
+        # 0: nothing
+        # 1~s.EXPLOSION_TIMER: explosion map
+        explosion_field = game_state["explosion_map"].astype(np.int8)
         
-        # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
+        # -2: wall
+        explosion_field[field == 0] = -2
+        
+        # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
         for bomb in game_state["bombs"]:
-            observation["field"][bomb[0]] = 8 + s.EXPLOSION_TIMER + bomb[1]
+            explosion_field[bomb[0]] += bomb[1] + s.EXPLOSION_TIMER + 1 # overlay bomb on explosion
         
-        # 6: self (needs to be present at any time)
-        observation["field"][game_state["self"][3]] = 6
-
-        observation["field"] = observation["field"].flatten()
-        assert MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8).contains(observation["field"])
-
-        observation["bomb_possible"] = int(game_state["self"][2])
+        # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 2 opponents
+        for other in game_state["others"]:
+            explosion_field[other[3]] = s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 2
         
-        assert spaces.Dict({"field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),"bomb_possible": spaces.Discrete(2)}).contains(observation)
+        # s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3 self
+        explosion_field[game_state['self'][3]] = s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 3
+        
+        # Get the agent's position
+        agent_x, agent_y = game_state['self'][3]
+        
+        # The agent's centered position in the observation
+        # center_x, center_y = s.ROWS, s.COLS
 
+        # Calculate the padding needed to ensure the agent is centered in the (s.ROWS*2-1) x (s.COLS*2-1) matrix
+        pad_left = s.COLS - agent_y
+        pad_right = agent_y + 1
+        pad_top = s.ROWS - agent_x
+        pad_bottom = agent_x + 1
+
+        # Apply padding to both cropped matrices
+        # pad -1 to the outside of the field
+        padded_field = np.pad(field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
+        padded_explosion_field = np.pad(explosion_field, ((pad_top, pad_bottom), (pad_left, pad_right)), mode='constant', constant_values=-1)
+
+        # Stack the padded field and explosion field into the observation
+        observation = np.stack((padded_field, padded_explosion_field))
+        
+        # Check that the observation fits within the expected size
+        assert observation.shape == (2,s.ROWS*2 + 1,s.COLS*2 + 1)
+        assert spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8).contains(observation)
+        
         return observation
+
+
+def fromObservationToState(observation):
+    # Reconstruct the game state from the observation
+    field = observation[0]
+    explosion_field = observation[1]
+
+    # Initialize game state components
+    game_state = {
+        'field': np.zeros((s.COLS, s.ROWS), dtype=np.int8),
+        'bombs': [],
+        'coins': [],
+        'self': None,
+        'others': [],
+        'explosion_map': np.zeros((s.COLS, s.ROWS), dtype=np.int8)
+    }
+
+    # Define the size of the centered observation
+    obs_size_x = s.ROWS * 2 + 1
+    obs_size_y = s.COLS * 2 + 1
+
+    # The agent's centered position in the observation
+    center_x, center_y = s.ROWS, s.COLS
+
+    for row_id in range(0,center_x):
+        if (explosion_field[row_id][center_y] == 0 or explosion_field[row_id][center_y] == -2) and field[row_id-1][center_y] == -1:
+            agent_x = center_x - row_id
+            break
+    for col_id in range(0,center_y):
+        if (explosion_field[center_x][col_id] == 0 or explosion_field[center_x][col_id] == -2) and field[center_x][col_id-1] == -1:
+            agent_y = center_y - col_id
+            break
+
+    # Offsets used to map observation back to the game grid
+    x_offset = agent_x - center_x
+    y_offset = agent_y - center_y
+
+    # Decode the field by iterating over the observation and mapping it to the original game grid
+    for obs_x in range(obs_size_x):
+        for obs_y in range(obs_size_y):
+            value = field[obs_x, obs_y]
+
+            # Calculate the original grid coordinates
+            original_x = obs_x + x_offset
+            original_y = obs_y + y_offset
+
+            # Check if the original coordinates are within the valid grid bounds
+            if 0 <= original_x < s.ROWS and 0 <= original_y < s.COLS:
+                if value == 0:
+                    game_state['field'][original_x, original_y] = -1  # Stone walls
+                elif value == 1:
+                    game_state['field'][original_x, original_y] = 0  # Free tile
+                elif value == 2:
+                    game_state['field'][original_x, original_y] = 1  # Crates
+                elif value == 3:
+                    game_state['coins'].append((original_x, original_y))  # Coins
+                elif value == 4:
+                    game_state['others'].append(('rule_based_agent', 0, False, (original_x, original_y)))  # Opponent without bomb
+                elif value == 5:
+                    game_state['others'].append(('rule_based_agent', 0, True, (original_x, original_y)))  # Opponent with bomb
+                elif value == 6:
+                    game_state['self'] = ('user_agent', 0, False, (original_x, original_y))  # Self without bomb
+                elif value == 7:
+                    game_state['self'] = ('user_agent', 0, True, (original_x, original_y))  # Self with bomb
+
+    # Decode the explosion_field (bombs, explosions)
+    for obs_x in range(obs_size_x):
+        for obs_y in range(obs_size_y):
+            value = explosion_field[obs_x, obs_y]
+
+            # Calculate the original grid coordinates
+            original_x = obs_x + x_offset
+            original_y = obs_y + y_offset
+
+            # Check if the original coordinates are within the valid grid bounds
+            if 0 <= original_x < s.ROWS and 0 <= original_y < s.COLS:
+                if value > 0 and value <= s.EXPLOSION_TIMER:
+                    game_state['explosion_map'][original_x, original_y] = value  # Explosion timer
+                 # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer
+                elif value > s.EXPLOSION_TIMER and value <= s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER:
+                    game_state['bombs'].append(((original_x, original_y), value - s.EXPLOSION_TIMER - 1))  # Bomb with timer
+                elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 2:
+                    # Already decoded as others
+                    pass
+                elif value == s.EXPLOSION_TIMER * 2 + s.BOMB_TIMER + 3:
+                    # Already decoded as self
+                    pass
+
+    return game_state
 
 
 class CustomEnv(gym.Env):
@@ -55,27 +173,27 @@ class CustomEnv(gym.Env):
 
     # metadata = {"render_modes": ["default"], "render_fps": 30}
 
-    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent"]}):
+    def __init__(self, options = {"argv": ["play","--no-gui","--my-agent","user_agent","--train","1"]}):
         super().__init__()
         # Define action and observation space
         # They must be gym.spaces objects
-        self.trajectory = []
 
         self.action_space = spaces.Discrete(len(ACTION_MAP)) # UP, DOWN, LEFT, RIGHT, WAIT, BOMB
-        
-        one_array = np.ones(s.COLS * s.ROWS)
-        self.observation_space = spaces.Dict(
-            {
-                "field": MultiDiscrete(nvec=one_array * ( 8 + s.EXPLOSION_TIMER + s.BOMB_TIMER), dtype = np.uint8),
-                # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
-                # 4: no bomb opponents, 5: has bomb opponents,
-                # 6: self
-                # 7~7+s.EXPLOSION_TIMER: explosion map
-                # 8+s.EXPLOSION_TIMER ~ 8+s.EXPLOSION_TIMER+ s.BOMB_TIMER: bomb map
-            
-                "bomb_possible": spaces.Discrete(2)
-            }
-        )
+        self.observation_space = spaces.Box(low=-2,high=max(8,s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 4), shape=(2,s.ROWS*2+1,s.COLS*2+1), dtype = np.int8)
+            # observation space consists of two parts
+            # first part is the field without bomb
+            # -1: outside of game field
+            # 0: stone walls, 1: free tiles, 2: crates, 3: coins,
+            # 4: no bomb opponents, 5: has bomb opponents,
+            # 6: self, 7: self with bomb
+
+            # second part is the explosion_map with bomb
+            # -1: outside of game field
+            # 0: nothing
+            # 1~s.EXPLOSION_TIMER: explosion map
+            # s.EXPLOSION_TIMER+1 ~ s.EXPLOSION_TIMER*2 + s.BOMB_TIMER + 1: explosion map + bomb timer 
+
+            # both parts are alined to make my agent in the center of the observation space
 
         # train the model using "user input"
         self.world, n_rounds, self.gui, self.every_step, \
@@ -94,26 +212,18 @@ class CustomEnv(gym.Env):
         self.world.user_input = None
 
         # store my agent
-        self.PPO_agent = None
+        self.my_agent = None
+        self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
+        self.my_pos_queue = [] # store the last 3 positions of my agent
         for a in self.world.agents:
             if a.name == "user_agent":
-                self.PPO_agent = a
-        assert isinstance(self.PPO_agent, agents.Agent)
+                self.my_agent = a
+        assert isinstance(self.my_agent, agents.Agent)
 
+        self.rng = np.random.default_rng()
         # start a new round
         self.world.new_round()
 
-
-    def my_render(self, wait_until_due):
-        # If every step should be displayed, wait until it is due to be shown
-        if wait_until_due:
-            self.gui_timekeeper.wait()
-
-        if self.gui_timekeeper.is_due():
-            self.gui_timekeeper.note()
-            # Render (which takes time)
-            self.gui.render()
-            pygame.display.flip()
 
     def manhattan_distance(self, point1, point2):
         x1, y1 = point1
@@ -122,147 +232,127 @@ class CustomEnv(gym.Env):
         return distance
 
     def step(self, action):
-        self.world.do_step(ACTION_MAP[action])
-        self.user_input = None
-
         terminated = False
         truncated = False
-
-        # get observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
-        if game_state == None: # the agent is dead
-            truncated = True
-            observation = fromStateToObservation(self.PPO_agent.last_game_state)
-            game_state = self.PPO_agent.last_game_state
-        else:
-            observation = fromStateToObservation(game_state)
-
-                # terminated or trunctated
+        # terminated or trunctated
         if self.world.running == False:
+            terminated = True
             if self.world.step == s.MAX_STEPS:
-                terminated = True
-            
-        a = math.log(5)/2#math.log(2)
-        b = 5**2 #2**2
-        # calculate non-explore punishment
-        non_explore_punishment = 0
-        current_pos = game_state["self"][3]
-        for i in range(len(self.trajectory)):
-            pos = self.trajectory[-i]
-            non_explore_punishment += b* np.exp(-a *self.manhattan_distance(current_pos, pos)) * np.exp(-a*i)
-
-        # new visit reward
-        new_visit_reward = 0
-        if current_pos not in self.trajectory:
-            new_visit_reward = 10
+                truncated = True
+            else:
+                truncated = False
+            # return np.zeros((2,s.ROWS, s.COLS),dtype=np.uint8), 0, terminated, truncated, {}
+            # game_state = self.world.get_state_for_agent(self.my_agent)
+        else:
+            self.world.do_step(ACTION_MAP[action])
+            self.user_input = None
         
-        # escape from explosion reward
-        escape_bomb_reward = 0
+        # get observation
+        death_reward = 0
+        game_state = self.world.get_state_for_agent(self.my_agent)
+        if game_state['self'][0] == 'DEAD': # the agent is dead
+            truncated = True
+            # death_reward = -0.5 # deal with this later
+        
+        observation = fromStateToObservation(game_state)
+        
+        current_pos = game_state["self"][3]
+
+        back_and_forth_reward = 0
+        if len(self.my_pos_queue) == 3:
+            if current_pos == self.my_pos_queue[1]:
+                back_and_forth_reward -= 0.01 # punish the agent for going back and forth
+        self.my_pos_queue.append(current_pos)
+        if len(self.my_pos_queue) > 3:
+            self.my_pos_queue.pop(0)
+
         def in_bomb_range(bomb_x,bomb_y,x,y):
             return ((bomb_x == x) and (abs(bomb_y - y) <= s.BOMB_POWER)) or \
                       ((bomb_y == y) and (abs(bomb_x - x) <= s.BOMB_POWER))
         
+        # escape from explosion reward
+        escape_bomb_reward = 0
+        x_now, y_now = current_pos
+        # Add proposal to run away from any nearby bomb about to blow
+        for (xb, yb), t in game_state['bombs']:
+            # if now in bomb range
+            if in_bomb_range(xb,yb,x_now,y_now):
+                escape_bomb_reward -= 0.000666
+
+            # If agent is in a safe cell when there is a bomb nearby
+            if self.manhattan_distance((xb,yb),(x_now,y_now)) <= s.BOMB_POWER + 2 and not in_bomb_range(xb,yb,x_now,y_now):
+                escape_bomb_reward += 0.002
         
-        meaningfull_bomb_reward = 0
-        if len(self.trajectory) > 0:
-            x, y = self.trajectory[-1] # last position
-            x_now, y_now =current_pos
-            # Add proposal to run away from any nearby bomb about to blow
-            for (xb, yb), t in game_state['bombs']:
-                if (xb == x) and (abs(yb - y) <= s.BOMB_POWER):
-                    # Run away
-                    if ((yb > y) and ACTION_MAP[action] ==  'UP') or \
-                        ((yb < y) and ACTION_MAP[action] == 'DOWN'):
-                        escape_bomb_reward += 20
-                    # Go towards bomb or wait
-                    if ((yb > y) and ACTION_MAP[action] ==  'DOWN') or \
-                        ((yb < y) and ACTION_MAP[action] == 'UP') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
-                if (yb == y) and (abs(xb - x) <= s.BOMB_POWER):
-                    # Run away
-                    if ((xb > x) and ACTION_MAP[action] == 'LEFT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'RIGHT'):
-                        escape_bomb_reward += 20
-                    # Go towards bomb or wait
-                    if ((xb > x) and ACTION_MAP[action] == 'RIGHT') or \
-                        ((xb < x) and ACTION_MAP[action] == 'LEFT') or \
-                        (ACTION_MAP[action] ==  'WAIT'):
-                        escape_bomb_reward -= 20
+        
+        index=0
+        closer_to_opponent_reward = 0
+        for agent in game_state['others']:
+            current_dist = self.manhattan_distance(current_pos, agent[3])
+            closest_dist, last_dist = self.dist_to_opponent[index]
+            if current_dist < closest_dist:
+                self.dist_to_opponent[index] = (current_dist, current_dist)
+                if closest_dist != s.COLS+s.ROWS:
+                    closer_to_opponent_reward += 0.01 # the agent is in the closest distance so far to an opponent
+                closest_dist = current_dist
 
-                # Try random direction if directly on top of a bomb
-                if xb == x and yb == y and ACTION_MAP[action] != "WAIT" \
-                    and ACTION_MAP[action] != "BOMB":
-                    escape_bomb_reward += 10
-
-                # If last pos in bomb range and now not
-                if in_bomb_range(xb,yb,x,y) and not in_bomb_range(xb,yb,x_now,y_now):
-                    escape_bomb_reward += 30    
-
-            # meaningfull bomb reward
-            if ACTION_MAP[action] == "BOMB":
-                # if there's a agent in bomb range, reward ++
-                for agent in self.world.active_agents:
-                    if agent != self.PPO_agent and \
-                        in_bomb_range(x,y,agent.x,agent.y): 
-                        meaningfull_bomb_reward += 50
+            if current_dist < last_dist:
+                closer_to_opponent_reward += 0.002 # the agent is getting closer to the opponent
+            elif current_dist > last_dist:
+                closer_to_opponent_reward -= 0.002 # the agent is getting further from the opponent
+            
+            self.dist_to_opponent[index] = (closest_dist, current_dist)
+            index += 1
                 
-                field = game_state["field"]
-                for x_temp in range(field.shape[0]):
-                    for y_temp in range(field.shape[1]):
-                        if field[x_temp,y_temp] == 1 and \
-                            in_bomb_range(x,y,x_temp,y_temp): # it's a crate
-                            meaningfull_bomb_reward += 20
-
-        self.trajectory.append(current_pos)
-
+        
         # Get reward
-        # self.PPO_agent.last_game_state, self.PPO_agent.last_action, game_state, self.events
-        reward = new_visit_reward - non_explore_punishment + meaningfull_bomb_reward
-        for event in self.PPO_agent.events:
-            match(event):
-                case e.MOVED_LEFT | e.MOVED_RIGHT | e.MOVED_UP | e.MOVED_DOWN:
-                    reward += 5
-                case e.WAITED:
-                    reward += 1
-                case e.INVALID_ACTION:
-                    reward -= 15
-                case e.BOMB_DROPPED:
-                    reward += 3
-                case e.BOMB_EXPLODED:
-                    reward += 3
-                case e.CRATE_DESTROYED:
-                    reward += 50
-                case e.COIN_FOUND:
-                    reward += 50
-                case e.COIN_COLLECTED:
-                    reward += 1000
-                case e.KILLED_OPPONENT:
-                    reward += 5000
-                case e.KILLED_SELF:
-                    reward -= 200
-                case e.GOT_KILLED:
-                    reward -= 500
-                case e.OPPONENT_ELIMINATED:
-                    reward -= 10
-                case e.SURVIVED_ROUND:
-                    reward += 500
+        # self.my_agent.last_game_state, self.my_agent.last_action, game_state, self.events
+        reward = back_and_forth_reward + death_reward + escape_bomb_reward + closer_to_opponent_reward
+        for event in self.my_agent.events:
+            if event in [e.MOVED_LEFT, e.MOVED_RIGHT, e.MOVED_UP, e.MOVED_DOWN]:
+                reward += 0
+            elif event == e.WAITED:
+                reward += 0
+            elif event == e.INVALID_ACTION:
+                reward -= 0
+            elif event == e.BOMB_DROPPED:
+                reward += 0
+            elif event == e.BOMB_EXPLODED:
+                reward += 0
+            elif event == e.CRATE_DESTROYED:
+                reward += 0.05
+            elif event == e.COIN_FOUND:
+                reward += 0.05
+            elif event == e.COIN_COLLECTED:
+                reward += 1
+            elif event == e.KILLED_OPPONENT:
+                reward += 5
+            elif event == e.KILLED_SELF:
+                reward -= 0.025
+            elif event == e.GOT_KILLED:
+                reward -= 0.05
+            elif event == e.OPPONENT_ELIMINATED:
+                reward -= 0
+            elif event == e.SURVIVED_ROUND:
+                reward += 0.5
 
-        return observation, reward, terminated, truncated, {"events" : self.PPO_agent.events}
+        reward -= 0.01 # penalty per iteration
+        return observation, reward, terminated, truncated, game_state # output game_state as info
 
 
-    def reset(self, seed = None):
+    def reset(self, **kwargs):
+        seed = int(self.rng.integers(0, np.iinfo(np.int64).max))
         super().reset(seed=seed) # following documentation
         
-        self.trajectory = []
+        self.dist_to_opponent = [(s.COLS+s.ROWS, s.COLS+s.ROWS) for _ in range(s.MAX_AGENTS-1)] # closest dist and last dist
+        self.my_pos_queue = []
         # start a new round
         self.world.new_round()
 
         # Get first observation
-        game_state = self.world.get_state_for_agent(self.PPO_agent)
+        game_state = self.world.get_state_for_agent(self.my_agent)
         observation = fromStateToObservation(game_state)
 
-        return observation, {"info": "reset"}
+        return observation, game_state # output game_state as info
     
 
     def render(self):
@@ -271,15 +361,115 @@ class CustomEnv(gym.Env):
 
 
     def close(self):
-        if self.make_video:
-            self.gui.make_video()
-        
-        # Can render end screen until next round is queried
-        
+        other_scores = []
+        user_agent_score = 0
+        for a in self.world.agents:
+            if a.name != "user_agent":
+                other_scores.append(a.total_score)
+            else: # user_agent
+                user_agent_score = a.total_score
+                agent_events = a.events
+
         self.world.end()
+
+        for a in self.world.agents:
+            # reset all agents
+            a.reset()
+
+        return user_agent_score > max(other_scores), other_scores, user_agent_score, agent_events # return True if user_agent wins
+
+
+
+class CustomEnv_coin_collector(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","coin_collector_agent","coin_collector_agent","--train","1"]})
+
+
+class CustomEnv_random(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","random_agent","random_agent","random_agent","--train","1"]})
+
+
+class CustomEnv_mix(CustomEnv):
+    def __init__(self):
+        super().__init__(options = {"argv": ["play","--no-gui","--agents","user_agent","coin_collector_agent","random_agent","rule_based_agent","--train","1"]})
+
+
+class CustonEnv_randomMix(CustomEnv):
+    def __init__(self):
+        argv_list = ["play","--no-gui","--agents","user_agent"]
+        num_agents = np.random.randint(1,4)
+        for _ in range(num_agents):
+            if random() < 0.6:
+                argv_list.append("rule_based_agent")
+            elif random() < 0.6:
+                argv_list.append("coin_collector_agent")
+            else:
+                argv_list.append("random_agent")
+
+        argv_list.append("--train")
+        argv_list.append("1")
+        print("argv_list:",argv_list[4:-2])
+        super().__init__(options = {"argv": argv_list})
+
+
+class CustonEnv_random_rule(CustomEnv):
+    def __init__(self):
+        argv_list = ["play","--no-gui","--agents","user_agent"]
+        num_agents = 3
+
+        if random() < 0.75:
+            for _ in range(num_agents):
+                argv_list.append("rule_based_agent")
+        else:
+            for _ in range(num_agents):
+                argv_list.append("random_agent")
+
+        argv_list.append("--train")
+        argv_list.append("1")
+        print("argv_list:",argv_list[4:-2])
+        super().__init__(options = {"argv": argv_list})
+
+
+from gymnasium import register
+import os
+
+register(
+    id='CustomEnv-v1',  # Use all rule_based_agent
+    entry_point='CustomEnv:CustomEnv',  # Replace with the actual path to your CustomEnv class
+)
+
+register(
+    id='CustomEnv_coin_collector-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_coin_collector',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_random-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_random',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_mix-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustomEnv_mix',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_randomMix-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustonEnv_randomMix',  # Replace with the actual path to your CustomEnv class
+)
+register(
+    id='CustomEnv_random_rule-v0',  # Unique identifier for the environment
+    entry_point='CustomEnv:CustonEnv_random_rule',  # Replace with the actual path to your CustomEnv class
+)
+# tmp_env = gym.make('CustomEnv-v1')
 
 
 if __name__ == "__main__":
     env = CustomEnv()
     # It will check your custom environment and output additional warnings if needed
     check_env(env)
+
+#     env = make_vec_env(
+#     'CustomEnv-v1',
+#     rng=np.random.default_rng(42),
+#     n_envs=8,
+#     post_wrappers=[lambda env, env_idx: RolloutInfoWrapper(env)],  # to compute rollouts
+# )
